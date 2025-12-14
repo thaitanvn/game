@@ -24,6 +24,8 @@
     position:fixed; inset:0; display:none;
     align-items:center; justify-content:center;
     background: rgba(0,0,0,.55);
+    z-index: 50; /* always above canvases/HUD */
+    pointer-events: auto;
   }
   .card {
     width:min(820px, calc(100vw - 28px));
@@ -53,9 +55,99 @@
     color:#fff; font-size:12px;
     display:none;
   }
+
+/* Noel background (hybrid, stable): vàng rực + tuyết vừa */
+#bgLights{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(400px 260px at 12% 18%, rgba(255,208,92,0.22), rgba(255,208,92,0) 70%),
+    radial-gradient(520px 360px at 82% 26%, rgba(255,208,92,0.20), rgba(255,208,92,0) 72%),
+    radial-gradient(460px 320px at 70% 78%, rgba(255,208,92,0.16), rgba(255,208,92,0) 70%),
+    radial-gradient(360px 260px at 30% 70%, rgba(255,208,92,0.14), rgba(255,208,92,0) 70%);
+  filter: blur(10px);
+  opacity: 1;
+  animation: noelBreath 3.8s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes noelBreath{
+  0%,100%{ opacity: .85; transform: scale(1); }
+  50%{ opacity: 1; transform: scale(1.015); }
+}
+#snowCanvas{
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+
+canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; }
+
+
+  /* đảm bảo HUD luôn nổi trên background */
+  #hud{ position: fixed; top: 12px; left: 12px; z-index: 20; pointer-events: none; }
+
+
+/* --- Audio UI (top-right) --- */
+.audioControls{
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 10020;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  user-select: none;
+  pointer-events: auto;
+}
+.audioBtn{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.audioBtn:active{ transform: translateY(1px); }
+.audioLabel{
+  color: rgba(255,255,255,.92);
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.audioVol{
+  width: 170px;
+  accent-color: #ffd36a;
+}
+.audioPct{
+  width: 44px;
+  text-align: right;
+  color: rgba(255,255,255,.78);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+/* keep question modal clickable above snow */
+#questionModal{ z-index: 10010; }
+
 </style>
 </head>
 <body>
+  <div id="bgLights" aria-hidden="true"></div>
+  <canvas id="snowCanvas" aria-hidden="true"></canvas>
+
 <canvas id="c"></canvas>
 
 <div class="hud" id="hud">
@@ -136,11 +228,11 @@
     gravity: 0.45,
     flap: -8.0,
     groundH: 0,
-    obstacleSpeed: 2.2,
-    tokenSpeed: 2.0,
-    tokenRadius: 24,
-    tokenSpawnMin: 420,
-    tokenSpawnMax: 760,
+    obstacleSpeed: 5.0,
+    tokenSpeed: 6.0,
+    tokenRadius: 28,
+    tokenSpawnMin: 240,
+    tokenSpawnMax: 420,
   };
 
   const state = {
@@ -543,6 +635,235 @@
       resetRun(santaImg);
       loop(body, wl, wr, santaImg);
     });
+})();
+</script>
+
+<script>
+(function(){
+  const snow = document.getElementById('snowCanvas');
+  if(!snow) return;
+  const ctx = snow.getContext('2d');
+  let W=0,H=0, dpr=1;
+  function resize(){
+    dpr = Math.max(1, window.devicePixelRatio||1);
+    W = window.innerWidth; H = window.innerHeight;
+    snow.width = Math.floor(W*dpr); snow.height = Math.floor(H*dpr);
+    snow.style.width = W+'px'; snow.style.height = H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize, {passive:true});
+  resize();
+
+  // Tuyết vừa: 2 lớp (xa + gần)
+  const farN = 70, nearN = 55;
+  const far = Array.from({length: farN}, () => ({
+    x: Math.random()*W, y: Math.random()*H,
+    r: 0.6 + Math.random()*1.2,
+    vy: 0.25 + Math.random()*0.45,
+    dx: -0.12 + Math.random()*0.24
+  }));
+  const near = Array.from({length: nearN}, () => ({
+    x: Math.random()*W, y: Math.random()*H,
+    r: 1.0 + Math.random()*2.0,
+    vy: 0.45 + Math.random()*0.95,
+    dx: -0.35 + Math.random()*0.70
+  }));
+
+  function step(){
+    ctx.clearRect(0,0,W,H);
+
+    // far (mờ)
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    for(const s of far){
+      s.y += s.vy; s.x += s.dx;
+      if(s.y > H+10){ s.y=-10; s.x=Math.random()*W; }
+      if(s.x < -10) s.x = W+10;
+      if(s.x > W+10) s.x = -10;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    }
+    // near (rõ)
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    for(const s of near){
+      s.y += s.vy; s.x += s.dx;
+      if(s.y > H+10){ s.y=-10; s.x=Math.random()*W; }
+      if(s.x < -10) s.x = W+10;
+      if(s.x > W+10) s.x = -10;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    }
+
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+})();
+</script>
+
+
+  <!-- Audio UI -->
+  <div id="audioControls" class="audioControls">
+    <button id="audioToggle" class="audioBtn" type="button" aria-label="Bật tắt nhạc">🔇</button>
+    <div class="audioLabel">Nhạc Noel</div>
+    <input id="audioVol" class="audioVol" type="range" min="0" max="100" value="80" />
+    <div id="audioVolLabel" class="audioPct">80%</div>
+  </div>
+
+<script>
+/* =========================
+   Noel Music (single-file)
+   - WebAudio synth + step sequencer (tempo-based)
+   - Starts on first user gesture due to browser autoplay policies
+   ========================= */
+(()=>{
+  let ctx=null, master=null;
+  let muted=true;
+  let userStarted=false;
+
+  const btn = document.getElementById('audioToggle');
+  const vol = document.getElementById('audioVol');
+  const vlabel = document.getElementById('audioVolLabel');
+
+  function ensureAudio(){
+    if(ctx) return;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    master = ctx.createGain();
+    master.gain.value = 0;
+    master.connect(ctx.destination);
+
+    // tiny "glow" reverb-ish using delay feedback (lightweight)
+    const delay = ctx.createDelay(0.6);
+    delay.delayTime.value = 0.18;
+    const fb = ctx.createGain(); fb.gain.value = 0.18;
+    delay.connect(fb); fb.connect(delay);
+    const wet = ctx.createGain(); wet.gain.value = 0.22;
+
+    master.connect(delay);
+    delay.connect(wet);
+    wet.connect(ctx.destination);
+
+    startSequencer();
+  }
+
+  function setVolume(v){
+    if(!master) return;
+    const target = muted ? 0 : Math.max(0, Math.min(1, v));
+    // smooth to avoid clicks
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setTargetAtTime(target, t, 0.03);
+  }
+
+  // --- Melody: "Jingle Bells" (compact loop) ---
+  const A4=440;
+  const noteFreq = (n)=> A4*Math.pow(2,(n-69)/12); // MIDI -> Hz
+  const N = {
+    E5: 76, D5:74, C5:72, G4:67, A4:69, B4:71, F5:77,
+    E4:64, C4:60, G3:55, A3:57, D4:62, F4:65
+  };
+
+  // Each item: [midi, beats] ; null = rest
+  const melody = [
+    [N.E5,1],[N.E5,1],[N.E5,2],
+    [N.E5,1],[N.E5,1],[N.E5,2],
+    [N.E5,1],[N.G4,1],[N.C5,1],[N.D5,1],[N.E5,4],
+    [N.F5,1],[N.F5,1],[N.F5,1],[N.F5,1],[N.F5,1],[N.E5,1],[N.E5,1],[N.E5,0.5],[N.E5,0.5],
+    [N.E5,1],[N.D5,1],[N.D5,1],[N.E5,1],[N.D5,2],[N.G4,2]
+  ];
+
+  // simple bass / chords per bar (root notes)
+  const bass = [
+    [N.C4,4],[N.C4,4],
+    [N.C4,4],[N.C4,4],
+    [N.C4,4],[N.G3,4],
+    [N.A3,4],[N.G3,4]
+  ];
+
+  const TEMPO = 132; // bpm
+  const beat = ()=> 60/TEMPO;
+
+  let seqTimer=null;
+  let nextTime=0;
+  let melIndex=0;
+  let bassIndex=0;
+
+  function playTone(midi, t, durBeats, type='sine', gain=0.18){
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+
+    o.type = type;
+    o.frequency.value = noteFreq(midi);
+
+    // envelope
+    const t0=t;
+    const t1=t + beat()*Math.max(0.02, durBeats);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0008, Math.max(t0+0.02, t1-0.02));
+    g.gain.setValueAtTime(0, t1);
+
+    o.connect(g);
+    g.connect(master);
+    o.start(t0);
+    o.stop(t1+0.02);
+  }
+
+  function scheduleAhead(){
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    // schedule 0.3s ahead
+    while(nextTime < now + 0.35){
+      // melody
+      const [m, b] = melody[melIndex];
+      if(m!==null) playTone(m, nextTime, b*0.95, 'triangle', 0.12);
+      nextTime += beat()*b;
+      melIndex = (melIndex+1) % melody.length;
+
+      // bass every 4 beats boundary: rough sync
+      // We check if we crossed a measure boundary by aligning to 4-beat grid
+      // (lightweight; good enough for "nhịp" feel)
+      const barPos = (nextTime/(beat()*4)) % 1;
+      if(barPos < 0.03){
+        const [bm, bb] = bass[bassIndex];
+        playTone(bm, nextTime, bb, 'sine', 0.09);
+        // add a soft 3rd for warmth
+        playTone(bm+4, nextTime, bb, 'sine', 0.045);
+        bassIndex = (bassIndex+1) % bass.length;
+      }
+    }
+  }
+
+  function startSequencer(){
+    if(seqTimer) return;
+    nextTime = ctx.currentTime + 0.08;
+    seqTimer = setInterval(scheduleAhead, 45); // stable, not "nháy loạn"
+  }
+
+  function userGestureStart(){
+    if(userStarted) return;
+    userStarted=true;
+    ensureAudio();
+    muted=false;
+    btn.textContent='🔊';
+    setVolume((+vol.value||80)/100);
+  }
+
+  // UI events
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    ensureAudio();
+    muted = !muted;
+    btn.textContent = muted ? '🔇' : '🔊';
+    setVolume((+vol.value||80)/100);
+  });
+
+  vol.addEventListener('input', ()=>{
+    vlabel.textContent = vol.value + '%';
+    if(!ctx) return;
+    setVolume((+vol.value||80)/100);
+  });
+
+  // autoplay policy: start on first interaction with page/game
+  window.addEventListener('pointerdown', userGestureStart, { once:true, capture:true });
+  window.addEventListener('keydown', (e)=>{ if(e.code==='Space') userGestureStart(); }, { capture:true });
+
 })();
 </script>
 </body>
