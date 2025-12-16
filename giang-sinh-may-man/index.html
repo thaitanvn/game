@@ -173,7 +173,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
 
 <script>
 (() => {
-  const QUESTIONS = [{"q": "Biểu tượng truyền thống thường được đặt trên đỉnh cây thông Noel là gì?", "a": ["Bông tuyết", "Ngôi sao", "Quả chuông", "Đèn pin"], "correct": 1}, {"q": "Ông già Noel thường phát quà vào đêm nào?", "a": ["Đêm 31/12", "Đêm 1/1", "Đêm 24/12", "Đêm 14/2"], "correct": 2}, {"q": "Màu sắc phổ biến nhất của trang phục ông già Noel là gì?", "a": ["Xanh lá", "Vàng", "Tím", "Đỏ"], "correct": 3}, {"q": "Bài hát “Jingle Bells” thường gắn với âm thanh gì?", "a": ["Chuông leng keng", "Trống dồn", "Kèn saxophone", "Tiếng mưa"], "correct": 0}, {"q": "Vật trang trí thường được treo trên cây thông Noel là gì?", "a": ["Nồi cơm", "Quả châu", "Bàn chải", "Gối"], "correct": 1}];
+  const QUESTIONS = [{"q": "Với nghề nhân sự, HR là từ viết tắt của…?", "a": ["Human Resources", "Happy Relations", "Hiring Robots", "Human Revenue"], "correct": 0}, {"q": "Với nghề nhân sự, TA là từ viết tắt của…?", "a": ["Talent Administration", "Talent Acquisition", "Total Attendance", "Technical Assignment"], "correct": 1}, {"q": "Với nghề nhân sự, L&D là từ viết tắt của…?", "a": ["Labor & Discipline", "Leadership & Direction", "Learning & Development", "Law & Decision"], "correct": 2}, {"q": "Với nghề nhân sự, C&B là từ viết tắt của…?", "a": ["Career & Behavior", "Cost & Budget", "Compliance & Bonus", "Compensation & Benefits"], "correct": 3}, {"q": "Với nghề nhân sự, ICC là từ viết tắt của…?", "a": ["Internal Communication & Culture", "International Company Code", "Internal Control Center", "Integrated Corporate Channel"], "correct": 0}];
 
   const WIN_POEMS = [
     ["Noel ai cũng có đôi", "Riêng tôi chỉ thích đĩa mồi với bia."],
@@ -375,7 +375,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     overlay.style.display = "flex";
     const qi = state.qIndex;
     const q = QUESTIONS[qi];
-    modalTitle.textContent = "Câu hỏi " + (qi+1);
+    modalTitle.textContent = "Câu " + (qi+1) + "/" + QUESTIONS.length;
     qtext.textContent = q.q;
     btnA.textContent = "A. " + q.a[0];
     btnB.textContent = "B. " + q.a[1];
