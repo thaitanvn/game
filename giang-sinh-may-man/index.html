@@ -251,6 +251,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     startTimeMs: 0,
     elapsedMs: 0,
     winPoem: null,
+    santaAppearCount: 0,
 // ready | play | question | gameover | win
     t: 0,
     score: 0,
@@ -322,6 +323,14 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     obs.w = img.width * obs.scale;
     obs.h = img.height * obs.scale;
     obs.passed = false;
+
+    // Count Santa "appearances" (A: initial spawn counts as 1)
+    state.santaAppearCount = (state.santaAppearCount || 0) + 1;
+
+    // Force the first question token to spawn right after Santa appears the 2nd time
+    if (state.santaAppearCount === 2 && state.qIndex === 0 && !token.active) {
+      state.nextTokenAt = state.t; // spawn ASAP via maybeSpawnToken()
+    }
   }
 
   function resetRun(santaImg) {
@@ -331,6 +340,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     state.qIndex = 0;
     state.correct = 0;
     state.winPoem = null;
+    state.santaAppearCount = 0;
     pig.y = innerHeight*0.55;
     pig.prevY = pig.y;
     pig.vy = 0;
