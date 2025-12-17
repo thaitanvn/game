@@ -196,6 +196,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
   const canvas = document.getElementById("c");
   const ctx = canvas.getContext("2d");
   const hud = document.getElementById("hud");
+  let santaImgRef = null;
 
   function formatTime(ms){ return (ms/1000).toFixed(2) + "s"; }
 
@@ -252,6 +253,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     elapsedMs: 0,
     winPoem: null,
     santaAppearCount: 0,
+    restartBox: null,
 // ready | play | question | gameover | win
     t: 0,
     score: 0,
@@ -407,6 +409,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     state.qIndex = 0;
     state.correct = 0;
     state.winPoem = null;
+    state.restartBox = null;
     state.santaAppearCount = 0;
     pig.y = innerHeight*0.55;
     pig.prevY = pig.y;
@@ -443,6 +446,19 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
   canvas.addEventListener("pointerdown", () => {
     if (state.mode === "gameover" || state.mode === "win") return;
     flap();
+  });
+
+  // Restart ONLY when clicking the restart button (prevents accidental skip after answering)
+  canvas.addEventListener("click", (ev) => {
+    if (state.mode !== "gameover" && state.mode !== "win") return;
+    const b = state.restartBox;
+    if (!b || !santaImgRef) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+      resetRun(santaImgRef);
+    }
   });
 
   function openQuestion() {
@@ -641,22 +657,69 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     return (dx*dx + dy*dy) <= rr*rr;
   }
 
-  function drawCenterText(title, sub) {
+    const RESTART_TEXT = "Click vào đây để chơi lại";
+  
+function drawCenterText(title, sub) {
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,.40)";
     ctx.fillRect(0,0,innerWidth,innerHeight);
     ctx.fillStyle = "rgba(255,255,255,.95)";
     ctx.font = "900 44px system-ui";
     ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
     ctx.fillText(title, innerWidth/2, innerHeight*0.40);
-    ctx.fillStyle = "rgba(255,255,255,.85)";
-    ctx.font = "600 16px system-ui";
-    ctx.fillText(sub, innerWidth/2, innerHeight*0.40 + 34);
+
+    // default: no restart box
+    state.restartBox = null;
+
+    if (sub === RESTART_TEXT) {
+      // draw a clickable button instead of plain subtext
+      const cx = innerWidth/2;
+      const cy = innerHeight*0.40 + 52;
+
+      ctx.font = "700 18px system-ui";
+      const tw = ctx.measureText(sub).width;
+      const padX = 18, padY = 10;
+      const bw = tw + padX*2;
+      const bh = 38;
+      const bx = cx - bw/2;
+      const by = cy - bh/2;
+
+      // rounded rect
+      const r = 12;
+      ctx.beginPath();
+      ctx.moveTo(bx + r, by);
+      ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+      ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+      ctx.arcTo(bx, by + bh, bx, by, r);
+      ctx.arcTo(bx, by, bx + bw, by, r);
+      ctx.closePath();
+
+      ctx.fillStyle = "rgba(255,255,255,.18)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,.45)";
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+      ctx.textBaseline = "middle";
+      ctx.fillText(sub, cx, cy);
+
+      state.restartBox = { x: bx, y: by, w: bw, h: bh };
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "600 16px system-ui";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(sub, innerWidth/2, innerHeight*0.40 + 34);
+    }
+
     ctx.restore();
   }
 
 
   function drawWinScreen() {
+    // default: no restart box
+    state.restartBox = null;
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,.40)";
     ctx.fillRect(0,0,innerWidth,innerHeight);
@@ -685,7 +748,36 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     y += 42;
     ctx.fillStyle = "rgba(255,255,255,.85)";
     ctx.font = "600 16px system-ui";
-    ctx.fillText("Nhấn F5 hoặc click để chơi lại", cx, y);
+    // clickable restart button
+    const btnText = RESTART_TEXT;
+    ctx.font = "700 18px system-ui";
+    const tw = ctx.measureText(btnText).width;
+    const padX = 18;
+    const bw = tw + padX*2;
+    const bh = 38;
+    const bx = cx - bw/2;
+    const by = y - bh/2;
+
+    const r = 12;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+    ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+    ctx.arcTo(bx, by + bh, bx, by, r);
+    ctx.arcTo(bx, by, bx + bw, by, r);
+    ctx.closePath();
+
+    ctx.fillStyle = "rgba(255,255,255,.18)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,.45)";
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,.92)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(btnText, cx, y);
+
+    state.restartBox = { x: bx, y: by, w: bw, h: bh };
 
     ctx.restore();
   }
@@ -809,17 +901,9 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     if (state.mode === "ready") {
       drawCenterText("READY", "Click/Chạm hoặc Space để bắt đầu");
     } else if (state.mode === "gameover") {
-      drawCenterText("GAME OVER", "Nhấn F5 hoặc click để chơi lại");
+      drawCenterText("GAME OVER", RESTART_TEXT);
     } else if (state.mode === "win") {
       drawWinScreen();
-    }
-
-    // restart on click for over states
-    window.__restart = () => resetRun(santaImg);
-    if (state.mode === "gameover" || state.mode === "win") {
-      canvas.onclick = () => resetRun(santaImg);
-    } else {
-      canvas.onclick = null;
     }
 
     state.t++;
@@ -827,6 +911,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
 
   Promise.all([load(ASSETS.body), load(ASSETS.wingL), load(ASSETS.wingR), load(ASSETS.santa)])
     .then(([body, wl, wr, santaImg]) => {
+      santaImgRef = santaImg;
       resetRun(santaImg);
       loop(body, wl, wr, santaImg);
     });
