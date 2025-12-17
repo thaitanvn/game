@@ -151,7 +151,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
 <canvas id="c"></canvas>
 
 <div class="hud" id="hud">
-  Né Noel+tuần lộc • Chạm <b>?</b> để trả lời <b>5 câu</b> (A/B/C/D).<br/>
+  Né chướng ngại vật • Chạm <b>?</b> để trả lời <b>6 câu</b> (A/B/C/D).<br/>
   Space/Click để bay • Trả lời sai = Game Over.
 </div>
 
@@ -173,7 +173,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
 
 <script>
 (() => {
-  const QUESTIONS = [{"q": "Với nghề nhân sự, HR là từ viết tắt của…?", "a": ["Human Resources", "Happy Relations", "Hiring Robots", "Human Revenue"], "correct": 0}, {"q": "Với nghề nhân sự, TA là từ viết tắt của…?", "a": ["Talent Administration", "Talent Acquisition", "Total Attendance", "Technical Assignment"], "correct": 1}, {"q": "Với nghề nhân sự, L&D là từ viết tắt của…?", "a": ["Labor & Discipline", "Leadership & Direction", "Learning & Development", "Law & Decision"], "correct": 2}, {"q": "Với nghề nhân sự, C&B là từ viết tắt của…?", "a": ["Career & Behavior", "Cost & Budget", "Compliance & Bonus", "Compensation & Benefits"], "correct": 3}, {"q": "Với nghề nhân sự, ICC là từ viết tắt của…?", "a": ["Internal Communication & Culture", "International Company Code", "Internal Control Center", "Integrated Corporate Channel"], "correct": 0}];
+  const QUESTIONS = [{"q": "Với nghề nhân sự, HR là từ viết tắt của…?", "a": ["Human Resources", "Happy Relations", "Hiring Robots", "Human Revenue"], "correct": 0}, {"q": "Với nghề nhân sự, TA là từ viết tắt của…?", "a": ["Talent Administration", "Talent Acquisition", "Total Attendance", "Technical Assignment"], "correct": 1}, {"q": "Với nghề nhân sự, L&D là từ viết tắt của…?", "a": ["Labor & Discipline", "Leadership & Direction", "Learning & Development", "Law & Decision"], "correct": 2}, {"q": "Với nghề nhân sự, C&B là từ viết tắt của…?", "a": ["Career & Behavior", "Cost & Budget", "Compliance & Bonus", "Compensation & Benefits"], "correct": 3}, {"q": "Với nghề nhân sự, ICC là từ viết tắt của…?", "a": ["Internal Communication & Culture", "International Company Code", "Internal Control Center", "Integrated Corporate Channel"], "correct": 0}, {"q": "Đâu là nội dung chính xác của \"Kim chỉ nam 2025\" với \"Tinh thần thời chiến\" của công ty?", "a": ["Kaizen - Innovation - Máu lửa - Tử tế", "Kaizen - Innovation - Máu lửa - Trách nhiệm", "Kaizen - Sáng tạo - Máu lửa - Tử tế", "Kaizen - Innovation - Quyết liệt - Tử tế"], "correct": 0}];
 
   const WIN_POEMS = [
     ["Noel ai cũng có đôi", "Riêng tôi chỉ thích đĩa mồi với bia."],
@@ -290,6 +290,27 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     hitPadTop: 0.10,
     hitPadBottom: 0.08,
   };
+  const tree = {
+    x: innerWidth + 240,
+    y: innerHeight*0.6,
+    baseY: innerHeight*0.6,
+    speed: GAME.obstacleSpeed * 0.90, // slightly slower than Santa
+    // Kích thước cây thông (hitbox + vẽ)
+    w: 86,
+    h: 150,
+    scale: 1.0,
+    bobAmp: 10,
+    bobFreq: 0.030,
+    swayAmp: 0.06,
+    swayFreq: 0.060,
+    active: false,
+    // HITBOX padding (để dễ chịu hơn chút so với hình vẽ)
+    hitPadLeft: 0.12,
+    hitPadRight: 0.12,
+    hitPadTop: 0.10,
+    hitPadBottom: 0.10,
+  };
+
 
   const token = {
     active: false,
@@ -305,8 +326,8 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
   function updateHUD(extra="") {
     const timeStr = formatTime(state.elapsedMs);
     hud.innerHTML =
-      "Né Noel+tuần lộc • <b>Đúng: " + state.correct + "/" + QUESTIONS.length + "</b> • <b>Thời gian: " + timeStr + "</b><br/>" +
-      "Space/Click để bay • Chạm <b>?</b> để trả lời 5 câu (A/B/C/D)." + (extra ? "<br/>"+extra : "");
+      "Né chướng ngại vật • <b>Đúng: " + state.correct + "/" + QUESTIONS.length + "</b> • <b>Thời gian: " + timeStr + "</b><br/>" +
+      "Space/Click để bay • Chạm <b>?</b> để trả lời " + QUESTIONS.length + " câu (A/B/C/D)." + (extra ? "<br/>"+extra : "");
   }
 
   function showToast(msg) {
@@ -317,12 +338,58 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
   }
 
   function resetObs(img) {
+    // Santa spawn
     obs.x = innerWidth + 260;
-    obs.baseY = 120 + Math.random()*(innerHeight - 240);
-    obs.y = obs.baseY;
     obs.w = img.width * obs.scale;
     obs.h = img.height * obs.scale;
     obs.passed = false;
+
+    // Tree spawn (paired with Santa)
+    tree.active = true;
+    tree.speed = obs.speed * 0.90;
+    tree.w = 86;
+    tree.h = 150;
+
+    // --- PA C: luôn tạo 1 "khe hở" để bay qua (Santa + Tree) ---
+    const topSafe = 70;
+    const bottomSafe = innerHeight - 60;
+
+    // Gap đủ rộng cho chim (khó vừa)
+    const gap = Math.max(190, pig.r * 9);
+
+    const halfGap = gap / 2;
+    const minCenter = topSafe + halfGap;
+    const maxCenter = bottomSafe - halfGap;
+    const gapCenter = (maxCenter > minCenter) ? (minCenter + Math.random() * (maxCenter - minCenter)) : (innerHeight * 0.5);
+
+    // Chọn ngẫu nhiên: Santa ở trên hoặc dưới
+    const santaOnTop = Math.random() < 0.5;
+
+    // Đặt tâm Santa và tâm Tree sao cho tạo ra khe hở
+    const santaHalf = obs.h / 2;
+    const treeHalf = tree.h / 2;
+
+    let santaY, treeY;
+
+    if (santaOnTop) {
+      santaY = gapCenter - halfGap - santaHalf;
+      treeY  = gapCenter + halfGap + treeHalf;
+    } else {
+      treeY  = gapCenter - halfGap - treeHalf;
+      santaY = gapCenter + halfGap + santaHalf;
+    }
+
+    // Clamp để không vượt biên
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    obs.baseY  = clamp(santaY, topSafe + santaHalf, bottomSafe - santaHalf);
+    tree.baseY = clamp(treeY,  topSafe + treeHalf,  bottomSafe - treeHalf);
+
+    // x: cho tree hơi "đi trước" một chút để dù chậm hơn Santa vẫn rời màn hình hợp lý
+    tree.x = obs.x - 120;
+
+    // Set current y ngay lập tức (frame đầu)
+    obs.y = obs.baseY;
+    tree.y = tree.baseY;
 
     // Count Santa "appearances" (A: initial spawn counts as 1)
     state.santaAppearCount = (state.santaAppearCount || 0) + 1;
@@ -345,6 +412,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     pig.prevY = pig.y;
     pig.vy = 0;
     token.active = false;
+    tree.active = false;
     state.nextTokenAt = innerWidth + rand(GAME.tokenSpawnMin, GAME.tokenSpawnMax);
     overlay.style.display = "none";
     resetObs(santaImg);
@@ -409,7 +477,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
         state.mode = "win";
         state.timerRunning = false;
         pig.vy = 0;
-        updateHUD("<b>Hoàn thành 5/5 câu! 🎉</b> Click để chơi lại.");
+        updateHUD("<b>Hoàn thành " + QUESTIONS.length + "/" + QUESTIONS.length + " câu! 🎉</b> Click để chơi lại.");
       } else {
         state.mode = "play";
         // Resume smoothly (no sudden drop)
@@ -489,6 +557,55 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     ctx.drawImage(img, -img.width/2, -img.height/2);
     ctx.restore();
   }
+  function drawTree() {
+    if (!tree.active) return;
+    // Bob + sway (nhẹ)
+    const bob = Math.sin(state.t * tree.bobFreq) * tree.bobAmp;
+    const sway = Math.sin(state.t * tree.swayFreq) * tree.swayAmp;
+    tree.y = tree.baseY + bob;
+
+    const x = tree.x;
+    const y = tree.y;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(sway);
+
+    // thân cây (tam giác)
+    const w = tree.w;
+    const h = tree.h;
+
+    // tán cây
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2);
+    ctx.lineTo(-w/2, h/2 - 18);
+    ctx.lineTo(w/2,  h/2 - 18);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(20, 130, 70, 0.95)";
+    ctx.fill();
+
+    // tầng tán nhỏ (tạo cảm giác cây thông)
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2 + 26);
+    ctx.lineTo(-w/2 + 12, h/2 - 44);
+    ctx.lineTo(w/2 - 12,  h/2 - 44);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(18, 155, 80, 0.92)";
+    ctx.fill();
+
+    // gốc cây
+    ctx.fillStyle = "rgba(110, 70, 30, 0.95)";
+    ctx.fillRect(-10, h/2 - 18, 20, 26);
+
+    // trang trí (đèn nhỏ)
+    ctx.fillStyle = "rgba(255, 240, 130, 0.95)";
+    ctx.beginPath(); ctx.arc(-w*0.18, -h*0.10, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( w*0.16,  0,      3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 0,       h*0.18, 3, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+  }
+
 
   function drawToken() {
     if (!token.active) return;
@@ -585,6 +702,11 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
       obs.x -= obs.speed;
       if (obs.x < -obs.w - 140) resetObs(santaImg);
 
+      if (tree.active) {
+        tree.x -= tree.speed;
+        if (tree.x < -tree.w - 200) tree.active = false;
+      }
+
       if (!obs.passed && obs.x + obs.w/2 < pig.x()) {
         obs.passed = true;
       }
@@ -618,6 +740,20 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
         updateHUD("<b>Game Over!</b> Va vào Noel+tuần lộc. Click để chơi lại.");
       }
 
+      // Tree collision (đụng là Game Over)
+      if (tree.active) {
+        const tryy = (tree.y - tree.h/2) + (tree.h * tree.hitPadTop);
+        const trxx = (tree.x - tree.w/2) + (tree.w * tree.hitPadLeft);
+        const trww = tree.w * (1 - tree.hitPadLeft - tree.hitPadRight);
+        const trhh = tree.h * (1 - tree.hitPadTop - tree.hitPadBottom);
+        if (circleRectHit(pig.x(), pig.y, pig.r, trxx, tryy, trww, trhh)) {
+          state.mode = "gameover";
+          state.timerRunning = false;
+          pig.vy = 0;
+          updateHUD("<b>Game Over!</b> Va vào cây thông. Click để chơi lại.");
+        }
+      }
+
       if (token.active) {
         const wob = Math.sin(state.t * token.wobFreq) * token.wobAmp;
         const tx = token.x;
@@ -645,6 +781,7 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
 
     drawBackground();
     drawSanta(santaImg);
+      drawTree();
 
     // Debug hitbox (nhấn H để bật/tắt)
     if (debugHitbox) {
