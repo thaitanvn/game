@@ -386,10 +386,9 @@ canvas#c, canvas#game, #gameCanvas, #ui, .hud { position: relative; z-index: 5; 
     obs.baseY  = clamp(santaY, topSafe + santaHalf, bottomSafe - santaHalf);
     tree.baseY = clamp(treeY,  topSafe + treeHalf,  bottomSafe - treeHalf);
 
-    // x: cho tree hơi "đi trước" một chút để dù chậm hơn Santa vẫn rời màn hình hợp lý
-    tree.x = obs.x - 120;
-
-    // Set current y ngay lập tức (frame đầu)
+    // x: cho cây thông ra SAU Santa một chút để tăng khoảng cách, dễ né hơn
+    tree.x = obs.x + 260;
+// Set current y ngay lập tức (frame đầu)
     obs.y = obs.baseY;
     tree.y = tree.baseY;
 
