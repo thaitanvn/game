@@ -151,14 +151,18 @@ function fmtTimeToSecond(d = new Date()){
   return d.toISOString().slice(0,19).replace('T',' ');
 }
 
-async function logWinnerToSheet(winnerName){
+function logWinnerToSheet(winnerName){
   if (!WEBAPP_URL || WEBAPP_URL.includes('PASTE_')) return;
   try{
-    await fetch(WEBAPP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ time: fmtTimeToSecond(new Date()), result: winnerName })
-    });
+    const t = fmtTimeToSecond(new Date());
+    const url = new URL(WEBAPP_URL);
+    url.searchParams.set('action','log');
+    url.searchParams.set('time', t);
+    url.searchParams.set('result', winnerName);
+
+    // Send as a "beacon" request without CORS blocking
+    const img = new Image();
+    img.src = url.toString();
   }catch(err){
     console.error('logWinnerToSheet error', err);
   }
