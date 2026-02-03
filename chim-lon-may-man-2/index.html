@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chim Lá»£n Bay Vá» ÄÃ­ch</title>
+<title>Chim Lợn Bay Về Đích</title>
 <style>
   :root { --race-h: 66vh; }
   * { box-sizing: border-box; }
@@ -54,21 +54,21 @@
 </style>
 </head>
 <body>
-  <header><h1>Chim Lá»£n Bay Vá» ÄÃ­ch</h1></header>
+  <header><h1>Chim Lợn Bay Về Đích</h1></header>
 
   <div id="race" class="race" aria-live="polite">
     <div class="finish-line" aria-hidden="true"></div>
-    <div class="finish-label">ÄÃCH</div>
+    <div class="finish-label">ĐÍCH</div>
     <div class="hud">
       <div id="countdown" class="pill">00:15</div>
-      <div class="hint">Nháº¥n Space Ä‘á»ƒ báº¯t Ä‘áº§u â€¢ Khi xong: Space hoáº·c â€œChÆ¡i láº¡iâ€.</div>
+      <div class="hint">Nhấn Space để bắt đầu • Khi xong: Space hoặc “Chơi lại”.</div>
     </div>
     <div class="overlay" id="overlay">
       <div class="winner">
-        ðŸ† NgÆ°á»i tháº¯ng: <span class="name-win" id="winName">â€”</span>
+        🏆 Người thắng: <span class="name-win" id="winName">—</span>
         <div class="btnrow">
-          <a id="resultLink" class="linkbtn" href="#" target="_blank" rel="noopener" style="display:none;">Xem káº¿t quáº£ táº¡i Ä‘Ã¢y</a>
-          <button id="playAgainBtn" class="secondary" type="button">ChÆ¡i tiáº¿p</button>
+          <a id="resultLink" class="linkbtn" href="#" target="_blank" rel="noopener" style="display:none;">Xem kết quả tại đây</a>
+          <button id="playAgainBtn" class="secondary" type="button">Chơi tiếp</button>
         </div>
       </div>
     </div>
@@ -76,13 +76,13 @@
 
   <div class="controls">
     <div>
-      <label><b>Danh sÃ¡ch tÃªn (má»—i dÃ²ng 1 ngÆ°á»i):</b></label>
-      <textarea id="names" placeholder="DÃ¡n 50 tÃªn, má»—i dÃ²ng 1 ngÆ°á»i..."></textarea>
+      <label><b>Danh sách tên (mỗi dòng 1 người):</b></label>
+      <textarea id="names" placeholder="Dán 50 tên, mỗi dòng 1 người..."></textarea>
       <div class="row">
         <input id="duration" type="number" min="3" max="240" step="1" value="15"/>
-        <label for="duration">giÃ¢y</label>
-        <button id="renderBtn" type="button">Táº¡o chim</button>
-        <button id="replayBtn" class="secondary" type="button">ChÆ¡i láº¡i</button>
+        <label for="duration">giây</label>
+        <button id="renderBtn" type="button">Tạo chim</button>
+        <button id="replayBtn" class="secondary" type="button">Chơi lại</button>
       </div>
     </div>
   </div>
@@ -92,7 +92,7 @@ const IMG = { body: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABisAAAanCAYAA
 
 // ================== GOOGLE SHEET INTEGRATION ==================
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1wAS5MrtvsY-HgEYkB-JDYgAgAg1gumxp8sb9g22NpYQ/edit?usp=sharing";
-// DÃ¡n URL Web App (Apps Script) vÃ o Ä‘Ã¢y khi báº¡n deploy:
+// Dán URL Web App (Apps Script) vào đây khi bạn deploy:
 const WEBAPP_URL = "PASTE_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE";
 // ===============================================================
 
@@ -118,7 +118,7 @@ function laneX(col,cols,row){ const w=raceEl.clientWidth||1, laneW=w/cols; let x
 
 function spawn(names){
   raceEl.querySelectorAll('.pig').forEach(el=>el.remove());
-  pigs=[]; winnerId=null; overlayEl.classList.remove('show'); winNameEl.textContent='â€”'; if(resultLinkEl){ resultLinkEl.style.display='none'; }
+  pigs=[]; winnerId=null; overlayEl.classList.remove('show'); winNameEl.textContent='—'; if(resultLinkEl){ resultLinkEl.style.display='none'; }
 
   const cfg=layoutConfig(names.length);
   const frag=document.createDocumentFragment();
@@ -144,10 +144,10 @@ function spawn(names){
   renderPositions();
 }
 
-function reset(){ cancelAnimationFrame(rafId); overlayEl.classList.remove('show'); winNameEl.textContent='â€”'; raceEl.classList.remove('running','celebrate'); state='idle'; winnerId=null; pigs.forEach(p=>{p.y=18; p.finishedAt=null; p.prevTop=null;}); renderPositions(); }
+function reset(){ cancelAnimationFrame(rafId); overlayEl.classList.remove('show'); winNameEl.textContent='—'; raceEl.classList.remove('running','celebrate'); state='idle'; winnerId=null; pigs.forEach(p=>{p.y=18; p.finishedAt=null; p.prevTop=null;}); renderPositions(); }
 
 function fmtTimeToSecond(d = new Date()){
-  // ISO Ä‘áº¿n giÃ¢y (khÃ´ng ms)
+  // ISO đến giây (không ms)
   return d.toISOString().slice(0,19).replace('T',' ');
 }
 
@@ -180,7 +180,7 @@ function rerollStats(){
 
 function start(){
   let names=parseNames(namesEl.value);
-  if(!names.length){ names = Array.from({length:8},(_,i)=>'NgÆ°á»i '+(i+1)); namesEl.value = names.join('\n'); }
+  if(!names.length){ names = Array.from({length:8},(_,i)=>'Người '+(i+1)); namesEl.value = names.join('\n'); }
   if(!pigs.length || pigs.length!==names.length) spawn(names);
   // Re-roll stats every race to avoid sticky winner
   rerollStats();
@@ -196,7 +196,7 @@ function measureTop(el){ const R=raceEl.getBoundingClientRect(); const spr=el.qu
 function setWinnerName(p){
   winNameEl.textContent = p.name;
 
-  // auto log (khÃ´ng phá»¥ thuá»™c click)
+  // auto log (không phụ thuộc click)
   logWinnerToSheet(p.name);
 
   // show overlay + UI
@@ -264,12 +264,12 @@ function loop(ts){
 }
 
 let spawnLock=false;
-renderBtn.addEventListener('click', (e)=>{ e.preventDefault(); if(spawnLock) return; spawnLock=true; try{ let names = parseNames(namesEl.value); if(!names.length){ names = Array.from({length:8},(_,i)=>'NgÆ°á»i '+(i+1)); namesEl.value = names.join('\n'); } spawn(names); } finally { spawnLock=false; } });
+renderBtn.addEventListener('click', (e)=>{ e.preventDefault(); if(spawnLock) return; spawnLock=true; try{ let names = parseNames(namesEl.value); if(!names.length){ names = Array.from({length:8},(_,i)=>'Người '+(i+1)); namesEl.value = names.join('\n'); } spawn(names); } finally { spawnLock=false; } });
 replayBtn.addEventListener('click', (e)=>{ e.preventDefault(); reset(); });
 playAgainBtn.addEventListener('click', (e)=>{ e.preventDefault(); reset(); });
 document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); if(state==='idle') start(); else if(state==='finished') reset(); } });
 window.addEventListener('resize', ()=>{ if(!pigs.length) return; const names=pigs.map(p=>p.name); spawn(names); });
-window.addEventListener('load', ()=>{ if (!namesEl.value.trim()) namesEl.value = Array.from({length:20},(_,i)=>'NgÆ°á»i '+(i+1)).join('\n'); spawn(parseNames(namesEl.value)); });
+window.addEventListener('load', ()=>{ if (!namesEl.value.trim()) namesEl.value = Array.from({length:20},(_,i)=>'Người '+(i+1)).join('\n'); spawn(parseNames(namesEl.value)); });
 </script>
 </body>
 </html>
