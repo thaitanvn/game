@@ -1,0 +1,252 @@
+* {
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+/* =========================
+   BACKGROUND XANH DƯƠNG – XANH TRỜI
+========================= */
+body {
+  overflow: hidden; /* KHÔNG SCROLL */
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255,255,255,0.95), rgba(255,255,255,0) 55%),
+    radial-gradient(circle at 80% 25%, rgba(255,255,255,0.85), rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, #bae6fd 0%, #93c5fd 45%, #60a5fa 100%);
+}
+
+/* App layout */
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;         /* ✅ giảm padding tổng để thêm chỗ */
+  gap: 10px;
+}
+
+/* Header */
+.topbar { flex-shrink: 0; }
+.topbar h1 { margin: 0 0 4px 0; font-size: 22px; }  /* ✅ gọn hơn */
+.status { font-size: 13px; opacity: 0.9; }
+.status span { margin-right: 14px; }
+
+/* Main */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* Card */
+.card {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 18px;
+  padding: 12px;        /* ✅ giảm padding card */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;             /* ✅ giảm gap */
+  box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+  backdrop-filter: blur(6px);
+}
+
+/* =========================
+   SCENE (ROBOT + CÁ HEO) – GIẢM CHIỀU CAO
+========================= */
+.scene {
+  position: relative;
+  height: 86px; /* ✅ giảm mạnh để nhường chỗ cho bàn phím */
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.35));
+  border: 1px solid rgba(15,23,42,0.10);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+}
+
+/* bỏ mây */
+.cloud { display: none !important; }
+
+.character {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  user-select: none;
+  z-index: 2;
+}
+
+.character-label {
+  font-size: 11px;
+  color: rgba(15,23,42,0.65);
+  font-weight: 700;
+}
+
+/* Robot */
+.character.robot svg {
+  width: 92px;      /* ✅ thu nhỏ */
+  height: 92px;
+  animation: bob 2.8s ease-in-out infinite;
+}
+
+/* Cá heo – đồng bộ xanh dương */
+.character.dolphin svg {
+  width: 105px;     /* ✅ thu nhỏ */
+  height: 84px;
+  filter: hue-rotate(200deg) saturate(1.2) brightness(1.05);
+  animation: swim 3.2s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,100% { transform: translateY(3px); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes swim {
+  0%,100% { transform: translateY(2px); }
+  50% { transform: translateY(-2px) translateX(-6px); }
+}
+
+/* =========================
+   TEXT & INPUT – GỌN LẠI
+========================= */
+.target-text {
+  font-size: 22px;   /* ✅ giảm để bớt chiếm chỗ */
+  line-height: 1.45;
+}
+
+.char.ok { color: #16a34a; }
+.char.focus { background: rgba(59,130,246,0.18); border-radius: 4px; }
+
+.typing-input {
+  width: 100%;
+  font-size: 18px;      /* ✅ giảm */
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,0.12);
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.controls button {
+  padding: 9px 14px;
+  font-size: 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+}
+.controls button:hover { background: #1d4ed8; }
+
+/* =========================
+   KEYBOARD PANEL – TĂNG KHUNG + SCALE NHỎ
+========================= */
+.keyboard-panel {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 18px;
+  padding: 10px;
+
+  height: 360px;                 /* ✅ tăng để đủ 4 dòng */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+
+  overflow: hidden;              /* ✅ không scroll nhưng không tràn */
+}
+
+/* Hint row */
+.hint-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+/* Hands */
+.hands {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.hand {
+  flex: 1;
+  background: rgba(15,23,42,0.05);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.fingers {
+  display: flex;
+  gap: 8px;
+}
+
+.finger {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid transparent;
+  font-weight: 800;
+}
+
+.finger.active {
+  border-color: #2563eb;
+  background: rgba(37,99,235,0.12);
+}
+
+/* =========================
+   VIRTUAL KEYBOARD – ĐỦ 4 DÒNG CHẮC CHẮN
+========================= */
+.vk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transform-origin: top center;
+  transform: scale(0.84);        /* ✅ scale nhỏ hơn để chắc chắn đủ 4 dòng */
+}
+
+.vk-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vk-key {
+  min-width: 40px;
+  height: 36px;                  /* ✅ thấp hơn */
+  background: #fff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(15,23,42,0.08);
+  font-weight: 800;
+}
+
+.vk-key.wide { min-width: 78px; }
+.vk-key.space { min-width: 240px; }
+
+.vk-key.next {
+  border-color: #2563eb;
+  background: rgba(37,99,235,0.15);
+}
+
+.vk-key.pressed {
+  background: rgba(22,163,74,0.18);
+  border-color: #16a34a;
+}
