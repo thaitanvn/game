@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Luyện gõ 10 ngón – Tiếng Việt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css?v=1" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>⌨️ Luyện gõ 10 ngón (Tiếng Việt)</h1>
+      <div class="status">
+        <span>⏱ Thời gian: <b id="timeLeft">60</b>s</span>
+        <span>❤️ Số lượt sai: <b id="lives">5</b></span>
+        <span>📌 Trạng thái: <b id="gameState">Chưa bắt đầu</b></span>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="card">
+
+        <!-- ===== SÂN KHẤU NHÂN VẬT (tươi sáng) ===== -->
+        <div class="scene" aria-hidden="true">
+          <!-- Robot mèo xanh (an toàn public, kiểu đáng yêu) -->
+          <div class="character robot">
+            <svg viewBox="0 0 220 220" width="170" height="170">
+              <!-- bóng -->
+              <ellipse cx="110" cy="205" rx="70" ry="10" fill="rgba(0,0,0,0.10)"/>
+              <!-- đầu -->
+              <circle cx="110" cy="95" r="70" fill="#38BDF8"/>
+              <!-- tai -->
+              <path d="M62 46 Q78 20 98 44" fill="#38BDF8"/>
+              <path d="M158 46 Q142 20 122 44" fill="#38BDF8"/>
+              <!-- mặt -->
+              <circle cx="110" cy="108" r="55" fill="#ffffff"/>
+              <!-- mắt -->
+              <ellipse cx="86" cy="85" rx="18" ry="22" fill="#ffffff"/>
+              <ellipse cx="134" cy="85" rx="18" ry="22" fill="#ffffff"/>
+              <circle cx="92" cy="92" r="6" fill="#0F172A"/>
+              <circle cx="128" cy="92" r="6" fill="#0F172A"/>
+              <!-- mũi -->
+              <circle cx="110" cy="108" r="8" fill="#F43F5E"/>
+              <!-- miệng -->
+              <path d="M110 116 Q110 140 110 140" stroke="#0F172A" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <path d="M110 140 Q90 158 70 150" stroke="#0F172A" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <path d="M110 140 Q130 158 150 150" stroke="#0F172A" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <!-- ria -->
+              <path d="M72 112 L30 104" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M74 126 L30 126" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M72 140 L30 148" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M148 112 L190 104" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M146 126 L190 126" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M148 140 L190 148" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+              <!-- vòng cổ -->
+              <rect x="60" y="154" width="100" height="16" rx="8" fill="#FB7185"/>
+              <circle cx="110" cy="178" r="10" fill="#FBBF24"/>
+              <circle cx="110" cy="178" r="3" fill="#0F172A"/>
+              <!-- body -->
+              <ellipse cx="110" cy="185" rx="52" ry="28" fill="#38BDF8"/>
+            </svg>
+            <div class="character-label">Robot mèo xanh</div>
+          </div>
+
+          <!-- Cá heo -->
+          <div class="character dolphin">
+            <svg viewBox="0 0 260 200" width="190" height="150">
+              <!-- bóng -->
+              <ellipse cx="120" cy="185" rx="90" ry="10" fill="rgba(0,0,0,0.10)"/>
+              <!-- thân -->
+              <path d="M35 120
+                       Q60 70 120 70
+                       Q185 70 210 110
+                       Q220 125 210 135
+                       Q190 160 140 160
+                       Q95 160 65 150
+                       Q45 145 35 120 Z"
+                    fill="#22C55E"/>
+              <!-- bụng -->
+              <path d="M70 125 Q100 150 145 150 Q175 150 195 132
+                       Q170 165 120 165 Q85 165 60 145 Q55 140 70 125 Z"
+                    fill="#DCFCE7"/>
+              <!-- vây -->
+              <path d="M130 105 Q150 85 170 105 Q155 120 130 105 Z" fill="#16A34A"/>
+              <!-- đuôi -->
+              <path d="M210 120 Q245 105 250 85 Q240 120 250 155 Q245 135 210 120 Z" fill="#16A34A"/>
+              <!-- mắt -->
+              <circle cx="92" cy="105" r="6" fill="#0F172A"/>
+              <circle cx="90" cy="103" r="2" fill="#ffffff"/>
+              <!-- miệng -->
+              <path d="M78 120 Q92 128 108 120" stroke="#0F172A" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <!-- bong bóng -->
+              <circle cx="35" cy="55" r="10" fill="rgba(255,255,255,0.7)"/>
+              <circle cx="20" cy="35" r="6" fill="rgba(255,255,255,0.6)"/>
+              <circle cx="50" cy="30" r="5" fill="rgba(255,255,255,0.55)"/>
+            </svg>
+            <div class="character-label">Cá heo vui vẻ</div>
+          </div>
+
+          <!-- mây -->
+          <div class="cloud c1"></div>
+          <div class="cloud c2"></div>
+          <div class="cloud c3"></div>
+        </div>
+
+        <!-- ✅ GIAO DIỆN TRƯỚC KHI BẤM BẮT ĐẦU -->
+        <div class="prestart" id="preStartPanel">
+          <div class="prestart-label">Số câu luyện tập</div>
+          <input
+            id="practiceCount"
+            class="prestart-input"
+            type="number"
+            min="1"
+            max="30"
+            inputmode="numeric"
+            placeholder="Nhập số từ 1-30"
+          />
+          <div class="prestart-note" id="practiceNote">Ví dụ: 5 (bé sẽ luyện 5 câu liên tiếp)</div>
+        </div>
+
+        <p><b>Câu cần gõ:</b></p>
+        <div id="targetText" class="target-text"></div>
+
+        <p><b>Bé gõ ở đây:</b></p>
+        <input
+          id="typingInput"
+          class="typing-input"
+          type="text"
+          disabled
+          placeholder="Bấm Bắt đầu rồi gõ nhé…"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+
+        <div id="msg" class="msg"></div>
+
+        <div class="controls">
+          <button id="btnStart">Bắt đầu</button>
+          <button id="btnReset">Reset</button>
+        </div>
+      </div>
+
+      <!-- PANEL BÀN PHÍM ẢO + NGÓN TAY -->
+      <div class="keyboard-panel">
+        <div class="hint-row">
+          <div class="finger-hint" id="fingerHint">Ngón tay cần dùng: <b>—</b></div>
+          <div class="nextkey-hint" id="nextKeyHint">Phím cần gõ: <b>—</b></div>
+        </div>
+
+        <div class="hands">
+          <div class="hand" id="leftHand">
+            <div class="hand-title">Tay trái</div>
+            <div class="fingers">
+              <div class="finger" data-f="L1">Út</div>
+              <div class="finger" data-f="L2">Áp út</div>
+              <div class="finger" data-f="L3">Giữa</div>
+              <div class="finger" data-f="L4">Trỏ</div>
+              <div class="finger" data-f="L5">Cái</div>
+            </div>
+          </div>
+          <div class="hand" id="rightHand">
+            <div class="hand-title">Tay phải</div>
+            <div class="fingers">
+              <div class="finger" data-f="R5">Cái</div>
+              <div class="finger" data-f="R4">Trỏ</div>
+              <div class="finger" data-f="R3">Giữa</div>
+              <div class="finger" data-f="R2">Áp út</div>
+              <div class="finger" data-f="R1">Út</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="virtualKeyboard" class="vk"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="script.js?v=1"></script>
+</body>
+</html>
