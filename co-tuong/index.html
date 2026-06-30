@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cờ Tướng – AI + Replay + Độ khó + Học tập</title>
+  <style>
+    :root {
+      --cell: 60px;
+      --line-color: #b5651d;
+      --board-bg: #f5e0b8;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    #status {
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    #difficultyText {
+      margin-bottom: 4px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    /* Panel học tập (chỉ hiện trong chế độ học tập) */
+    #studyPanel {
+      display: none;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      background: #fff7e6;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      font-size: 13px;
+      max-width: 600px;
+    }
+
+    #studyPanelTop {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    #studyMessage {
+      flex: 1;
+    }
+
+    #studyScoreBox {
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    #hintBtn {
+      margin-top: 4px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #e67e22;
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    #hintBtn:hover {
+      background: #d35400;
+    }
+
+    #gameContainer {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    /* Bàn cờ */
+    #board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(9, var(--cell));
+      grid-template-rows: repeat(10, var(--cell));
+      width: calc(9 * var(--cell));
+      height: calc(10 * var(--cell));
+      border: 3px solid #333;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background-color: var(--board-bg);
+      background-image: linear-gradient(
+          to right,
+          var(--line-color) 1px,
+          transparent 1px
+        ),
+        linear-gradient(to bottom, var(--line-color) 1px, transparent 1px);
+      background-size: var(--cell) var(--cell);
+      background-position: calc(var(--cell) / 2) calc(var(--cell) / 2);
+      overflow: hidden;
+    }
+
+    .cell {
+      width: var(--cell);
+      height: var(--cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-sizing: border-box;
+      border: none;
+      background: transparent;
+    }
+
+    .piece {
+      font-size: 26px;
+      font-weight: bold;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      background: #fefefe;
+      position: relative;
+      z-index: 1; /* quân nằm trên sông */
+    }
+
+    .red {
+      color: #c0392b;
+      border-color: #c0392b;
+    }
+
+    .black {
+      color: #2c3e50;
+      border-color: #2c3e50;
+    }
+
+    .selected {
+      outline: 3px solid #27ae60;
+      outline-offset: 0;
+    }
+
+    /* Highlight gợi ý */
+    .hint-cell {
+      box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.7) inset;
+    }
+
+    /* Đường chéo trong cung */
+    .palace-diagonal {
+      position: absolute;
+      height: 2px;
+      background-color: var(--line-color);
+      pointer-events: none;
+    }
+
+    /* Chấm tròn */
+    .dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--line-color);
+      pointer-events: none;
+    }
+
+    /* Sông – cân giữa 2 bên, dày đúng 1 ô */
+    #river {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      top: calc(4.5 * var(--cell));
+      height: var(--cell);
+      pointer-events: none;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+
+      font-size: 26px;
+      font-weight: 700;
+      color: #4a6fa5;
+
+      background: linear-gradient(
+        to bottom,
+        rgba(173, 216, 230, 0.9),
+        rgba(173, 216, 230, 0.65)
+      );
+      border-top: 2px solid #9bbad6;
+      border-bottom: 2px solid #9bbad6;
+      box-sizing: border-box;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      z-index: 0;
+    }
+
+    #river span {
+      letter-spacing: 4px;
+    }
+
+    /* Panel bên phải */
+    #sidePanel {
+      width: 250px;
+      font-size: 14px;
+    }
+
+    #clocks,
+    #historyBox,
+    #replayBox {
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    #clocks div {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    #clocks div:last-child {
+      margin-bottom: 0;
+    }
+
+    .clock-label-red {
+      color: #c0392b;
+    }
+
+    .clock-label-black {
+      color: #2c3e50;
+    }
+
+    #historyBox h3,
+    #replayBox h3 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+    }
+
+    #historyList {
+      padding-left: 18px;
+      margin: 0;
+      font-size: 13px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    #controls {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #3498db;
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    button.secondary {
+      background: #7f8c8d;
+    }
+
+    button.secondary:hover {
+      background: #636e72;
+    }
+
+    #aiControl {
+      margin-top: 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #replayControls {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    #replayInfo {
+      font-size: 12px;
+      color: #555;
+    }
+
+    /* Overlay chọn độ khó */
+    #difficultyOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #difficultyModal {
+      background: #ffffff;
+      padding: 20px 22px 18px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      min-width: 260px;
+    }
+
+    #difficultyModal h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+    }
+
+    #difficultyModal p {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      color: #555;
+    }
+
+    #difficultyButtons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    #difficultyButtons button {
+      min-width: 90px;
+    }
+
+    /* Overlay chọn chế độ chơi */
+    #modeOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+    }
+
+    #modeModal {
+      background: #ffffff;
+      padding: 20px 22px 18px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      min-width: 260px;
+    }
+
+    #modeModal h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+    }
+
+    #modeModal p {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      color: #555;
+    }
+
+    #modeButtons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    #modeButtons button {
+      min-width: 110px;
+    }
+  </style>
+</head>
+<body>
+<h1>Cờ Tướng (Xiangqi)</h1>
+<div id="status"></div>
+<div id="difficultyText">Độ khó: (chưa chọn)</div>
+
+<div id="studyPanel">
+  <div id="studyPanelTop">
+    <div id="studyMessage">
+      Chế độ học tập: Bấm “Gợi ý” để xem nước đề xuất, đi đúng được +1⭐.
+    </div>
+    <div id="studyScoreBox">
+      Điểm: <span id="studyScore">0</span> ⭐
+    </div>
+  </div>
+  <button id="hintBtn">Gợi ý</button>
+</div>
+
+<div id="gameContainer">
+  <div id="board"></div>
+
+  <div id="sidePanel">
+    <div id="clocks">
+      <div>
+        <span class="clock-label-red">ĐỎ</span>
+        <span id="redClock">10:00</span>
+      </div>
+      <div>
+        <span class="clock-label-black">ĐEN</span>
+        <span id="blackClock">10:00</span>
+      </div>
+    </div>
+
+    <div id="historyBox">
+      <h3>Lịch sử nước đi</h3>
+      <ol id="historyList"></ol>
+    </div>
+
+    <div id="replayBox">
+      <h3>Replay</h3>
+      <div id="replayInfo">Đang ở trạng thái hiện tại.</div>
+      <div id="replayControls">
+        <button id="replayStartBtn" class="secondary">⏮</button>
+        <button id="replayPrevBtn" class="secondary">◀</button>
+        <button id="replayNextBtn" class="secondary">▶</button>
+        <button id="replayEndBtn" class="secondary">⏭</button>
+        <button id="replayAutoBtn" class="secondary">Auto</button>
+      </div>
+      <button id="replayToggleBtn" class="secondary" style="margin-top:6px;">
+        Replay ván cờ
+      </button>
+    </div>
+
+    <div id="controls">
+      <button id="resetBtn">Ván mới</button>
+      <button id="undoBtn" class="secondary">Đi lại</button>
+    </div>
+
+    <label id="aiControl">
+      <input type="checkbox" id="aiToggle" />
+      Máy đánh ĐEN
+    </label>
+  </div>
+</div>
+
+<!-- Overlay chọn độ khó -->
+<div id="difficultyOverlay">
+  <div id="difficultyModal">
+    <h2>Chọn độ khó</h2>
+    <p>Chọn độ khó khi chơi với máy.</p>
+    <div id="difficultyButtons">
+      <button data-level="easy">Dễ</button>
+      <button data-level="medium">Trung bình</button>
+      <button data-level="hard">Khó</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay chọn chế độ chơi -->
+<div id="modeOverlay">
+  <div id="modeModal">
+    <h2>Chọn chế độ chơi</h2>
+    <p>Ván mới: bạn muốn chơi kiểu nào?</p>
+    <div id="modeButtons">
+      <button data-mode="normal">Chơi thường</button>
+      <button data-mode="ai">Chơi với máy</button>
+      <button data-mode="study">Chế độ học tập</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // r = red, b = black
+  // type: k=king, a=advisor, e=elephant, r=rook, n=knight, c=cannon, p=pawn
+
+  const CELL_SIZE = 60;
+  const INITIAL_TIME = 10 * 60;
+
+  let board = [];
+  let currentPlayer = "r";
+  let selected = null;
+  let gameOver = false;
+  let cellElements = [];
+
+  let moveHistory = [];
+  let moveRecords = [];
+  let stateStack = [];
+
+  let redTime = INITIAL_TIME;
+  let blackTime = INITIAL_TIME;
+  let clockInterval = null;
+
+  let aiEnabled = false;
+
+  // Chế độ chơi: normal / ai / study
+  let gameMode = "normal";
+  let difficulty = null; // easy/medium/hard
+  let studyScore = 0;
+  let lastHintMove = null;
+
+  // Replay
+  let replayMode = false;
+  let replayIndex = 0;
+  let savedStateForReplay = null;
+  let autoReplayInterval = null;
+
+  /* ========= TẠO BÀN CỜ BAN ĐẦU ========= */
+
+  function createInitialBoard() {
+    const b = [];
+    for (let r = 0; r < 10; r++) {
+      b.push(new Array(9).fill(null));
+    }
+
+    // Hàng sau đen
+    b[0][0] = { side: "b", type: "r" };
+    b[0][1] = { side: "b", type: "n" };
+    b[0][2] = { side: "b", type: "e" };
+    b[0][3] = { side: "b", type: "a" };
+    b[0][4] = { side: "b", type: "k" };
+    b[0][5] = { side: "b", type: "a" };
+    b[0][6] = { side: "b", type: "e" };
+    b[0][7] = { side: "b", type: "n" };
+    b[0][8] = { side: "b", type: "r" };
+
+    // Pháo đen
+    b[2][1] = { side: "b", type: "c" };
+    b[2][7] = { side: "b", type: "c" };
+
+    // Tốt đen
+    for (let c = 0; c < 9; c += 2) {
+      b[3][c] = { side: "b", type: "p" };
+    }
+
+    // Hàng sau đỏ
+    b[9][0] = { side: "r", type: "r" };
+    b[9][1] = { side: "r", type: "n" };
+    b[9][2] = { side: "r", type: "e" };
+    b[9][3] = { side: "r", type: "a" };
+    b[9][4] = { side: "r", type: "k" };
+    b[9][5] = { side: "r", type: "a" };
+    b[9][6] = { side: "r", type: "e" };
+    b[9][7] = { side: "r", type: "n" };
+    b[9][8] = { side: "r", type: "r" };
+
+    // Pháo đỏ
+    b[7][1] = { side: "r", type: "c" };
+    b[7][7] = { side: "r", type: "c" };
+
+    // Tốt đỏ
+    for (let c = 0; c < 9; c += 2) {
+      b[6][c] = { side: "r", type: "p" };
+    }
+
+    return b;
+  }
+
+  function initBoard() {
+    board = createInitialBoard();
+    currentPlayer = "r";
+    selected = null;
+    gameOver = false;
+    moveHistory = [];
+    moveRecords = [];
+    stateStack = [];
+    updateStatus();
+    updateHistoryUI();
+  }
+
+  function pieceToChar(piece) {
+    if (!piece) return "";
+    const { side, type } = piece;
+    if (side === "r") {
+      switch (type) {
+        case "k": return "帥";
+        case "a": return "仕";
+        case "e": return "相";
+        case "r": return "車";
+        case "n": return "傌";
+        case "c": return "炮";
+        case "p": return "兵";
+      }
+    } else {
+      switch (type) {
+        case "k": return "將";
+        case "a": return "士";
+        case "e": return "象";
+        case "r": return "車";
+        case "n": return "馬";
+        case "c": return "砲";
+        case "p": return "卒";
+      }
+    }
+    return "?";
+  }
+
+  function buildBoardUI() {
+    const boardDiv = document.getElementById("board");
+    boardDiv.innerHTML = "";
+    cellElements = [];
+
+    for (let r = 0; r < 10; r++) {
+      const rowCells = [];
+      for (let c = 0; c < 9; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.row = r.toString();
+        cell.dataset.col = c.toString();
+        cell.addEventListener("click", onCellClick);
+        boardDiv.appendChild(cell);
+        rowCells.push(cell);
+      }
+      cellElements.push(rowCells);
+    }
+
+    drawDecorations(boardDiv);
+    renderBoard();
+  }
+
+  function renderBoard() {
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const cell = cellElements[r][c];
+        const piece = board[r][c];
+        cell.innerHTML = "";
+        cell.classList.remove("hint-cell");
+        if (piece) {
+          const span = document.createElement("div");
+          span.classList.add("piece");
+          span.classList.add(piece.side === "r" ? "red" : "black");
+          span.textContent = pieceToChar(piece);
+          cell.appendChild(span);
+        }
+      }
+    }
+    if (selected && !replayMode) {
+      const { r, c } = selected;
+      const pieceEl = cellElements[r][c].firstChild;
+      if (pieceEl) pieceEl.classList.add("selected");
+    }
+  }
+
+  function updateStatus() {
+    const statusDiv = document.getElementById("status");
+    if (gameOver) return;
+    if (replayMode) return;
+    statusDiv.textContent = currentPlayer === "r" ? "Lượt: ĐỎ" : "Lượt: ĐEN";
+  }
+
+  function updateDifficultyLabel() {
+    const el = document.getElementById("difficultyText");
+    let text;
+    switch (difficulty) {
+      case "easy":
+        text = "Độ khó: Dễ";
+        break;
+      case "medium":
+        text = "Độ khó: Trung bình";
+        break;
+      case "hard":
+        text = "Độ khó: Khó";
+        break;
+      default:
+        text = "Độ khó: (chưa chọn)";
+    }
+    el.textContent = text;
+  }
+
+  function updateStudyScoreUI() {
+    document.getElementById("studyScore").textContent = studyScore.toString();
+  }
+
+  function setStudyMessage(msg) {
+    document.getElementById("studyMessage").textContent = msg;
+  }
+
+  function applyModeUI() {
+    const clocks = document.getElementById("clocks");
+    const studyPanel = document.getElementById("studyPanel");
+    const aiToggle = document.getElementById("aiToggle");
+
+    if (gameMode === "study") {
+      clocks.style.display = "none";
+      studyPanel.style.display = "block";
+      aiToggle.checked = true;
+      aiToggle.disabled = true;
+    } else {
+      clocks.style.display = "block";
+      studyPanel.style.display = "none";
+      aiToggle.disabled = false;
+    }
+  }
+
+  /* ========= CLICK ========= */
+
+  function onCellClick(e) {
+    if (gameOver) return;
+    if (replayMode) return;
+    if (aiEnabled && currentPlayer === "b") return;
+
+    const cell = e.currentTarget;
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
+    const piece = board[r][c];
+
+    if (!selected) {
+      if (piece && piece.side === currentPlayer) {
+        selected = { r, c };
+        renderBoard();
+      }
+    } else {
+      const fromR = selected.r;
+      const fromC = selected.c;
+
+      if (piece && piece.side === currentPlayer) {
+        selected = { r, c };
+        renderBoard();
+        return;
+      }
+
+      const moved = tryMove(fromR, fromC, r, c);
+      if (moved) {
+        selected = null;
+        renderBoard();
+        updateStatus();
+
+        if (!gameOver && aiEnabled && currentPlayer === "b") {
+          setTimeout(() => {
+            computerMove();
+          }, 300);
+        }
+      } else {
+        if (fromR === r && fromC === c) {
+          selected = null;
+          renderBoard();
+        }
+      }
+    }
+  }
+
+  /* ========= LOGIC CỜ ========= */
+
+  function inBounds(r, c) {
+    return r >= 0 && r < 10 && c >= 0 && c < 9;
+  }
+
+  function cloneBoard(srcBoard) {
+    return srcBoard.map(row =>
+      row.map(cell => (cell ? { ...cell } : null))
+    );
+  }
+
+  function generalsFacing(tempBoard) {
+    let redK = null;
+    let blackK = null;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = tempBoard[r][c];
+        if (p && p.type === "k") {
+          if (p.side === "r") redK = { r, c };
+          else blackK = { r, c };
+        }
+      }
+    }
+    if (!redK || !blackK) return false;
+    if (redK.c !== blackK.c) return false;
+
+    const col = redK.c;
+    const start = Math.min(redK.r, blackK.r) + 1;
+    const end = Math.max(redK.r, blackK.r) - 1;
+    for (let r = start; r <= end; r++) {
+      if (tempBoard[r][col]) return false;
+    }
+    return true;
+  }
+
+  function countPiecesBetween(r1, c1, r2, c2, tempBoard) {
+    let count = 0;
+    if (r1 === r2) {
+      const start = Math.min(c1, c2) + 1;
+      const end = Math.max(c1, c2) - 1;
+      for (let c = start; c <= end; c++) {
+        if (tempBoard[r1][c]) count++;
+      }
+    } else if (c1 === c2) {
+      const start = Math.min(r1, r2) + 1;
+      const end = Math.max(r1, r2) - 1;
+      for (let r = start; r <= end; r++) {
+        if (tempBoard[r][c1]) count++;
+      }
+    }
+    return count;
+  }
+
+  function palaceContains(side, r, c) {
+    if (c < 3 || c > 5) return false;
+    if (side === "r") {
+      return r >= 7 && r <= 9;
+    } else {
+      return r >= 0 && r <= 2;
+    }
+  }
+
+  function isInCheck(side, boardRef) {
+    let kingR = -1, kingC = -1;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = boardRef[r][c];
+        if (p && p.side === side && p.type === "k") {
+          kingR = r; kingC = c;
+          break;
+        }
+      }
+      if (kingR !== -1) break;
+    }
+    if (kingR === -1) return false;
+
+    const enemy = side === "r" ? "b" : "r";
+
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = boardRef[r][c];
+        if (p && p.side === enemy) {
+          if (isBasicLegalMoveWithoutSelfCheck(r, c, kingR, kingC, boardRef, enemy)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function isBasicLegalMoveWithoutSelfCheck(fromR, fromC, toR, toC, boardRef, side) {
+    if (!inBounds(toR, toC)) return false;
+    const piece = boardRef[fromR][fromC];
+    if (!piece || piece.side !== side) return false;
+    const target = boardRef[toR][toC];
+    if (target && target.side === side) return false;
+
+    const dr = toR - fromR;
+    const dc = toC - fromC;
+    const adr = Math.abs(dr);
+    const adc = Math.abs(dc);
+
+    let ok = false;
+
+    switch (piece.type) {
+      case "r":
+        if (fromR === toR || fromC === toC) {
+          const between = countPiecesBetween(fromR, fromC, toR, toC, boardRef);
+          if (between === 0) ok = true;
+        }
+        break;
+      case "n":
+        if ((adr === 2 && adc === 1) || (adr === 1 && adc === 2)) {
+          let legR, legC;
+          if (adr === 2) {
+            legR = fromR + dr / 2;
+            legC = fromC;
+          } else {
+            legR = fromR;
+            legC = fromC + dc / 2;
+          }
+          if (!boardRef[legR][legC]) ok = true;
+        }
+        break;
+      case "c":
+        if (fromR === toR || fromC === toC) {
+          const between = countPiecesBetween(fromR, fromC, toR, toC, boardRef);
+          if (!target) {
+            if (between === 0) ok = true;
+          } else {
+            if (between === 1) ok = true;
+          }
+        }
+        break;
+      case "e":
+        if (adr === 2 && adc === 2) {
+          const midR = fromR + dr / 2;
+          const midC = fromC + dc / 2;
+          if (!boardRef[midR][midC]) {
+            if (side === "r" && toR >= 5) ok = true;
+            if (side === "b" && toR <= 4) ok = true;
+          }
+        }
+        break;
+      case "a":
+        if (adr === 1 && adc === 1 && palaceContains(side, toR, toC)) {
+          ok = true;
+        }
+        break;
+      case "k":
+        if (adr + adc === 1 && palaceContains(side, toR, toC)) {
+          ok = true;
+        }
+        break;
+      case "p":
+        if (side === "r") {
+          if (fromR >= 5) {
+            if (dr === -1 && dc === 0) ok = true;
+          } else {
+            if ((dr === -1 && dc === 0) || (dr === 0 && adc === 1)) ok = true;
+          }
+        } else {
+          if (fromR <= 4) {
+            if (dr === 1 && dc === 0) ok = true;
+          } else {
+            if ((dr === 1 && dc === 0) || (dr === 0 && adc === 1)) ok = true;
+          }
+        }
+        break;
+    }
+
+    if (!ok) return false;
+
+    const tempBoard = cloneBoard(boardRef);
+    tempBoard[toR][toC] = tempBoard[fromR][fromC];
+    tempBoard[fromR][fromC] = null;
+
+    if (generalsFacing(tempBoard)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function isLegalMove(fromR, fromC, toR, toC, boardRef, side) {
+    if (!isBasicLegalMoveWithoutSelfCheck(fromR, fromC, toR, toC, boardRef, side))
+      return false;
+
+    const tempBoard = cloneBoard(boardRef);
+    tempBoard[toR][toC] = tempBoard[fromR][fromC];
+    tempBoard[fromR][fromC] = null;
+
+    if (isInCheck(side, tempBoard)) {
+      return false;
+    }
+    return true;
+  }
+
+  function hasAnyLegalMove(side) {
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = board[r][c];
+        if (p && p.side === side) {
+          for (let tr = 0; tr < 10; tr++) {
+            for (let tc = 0; tc < 9; tc++) {
+              if (isLegalMove(r, c, tr, tc, board, side)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /* ========= LỊCH SỬ & UNDO ========= */
+
+  function pushState() {
+    const state = {
+      board: cloneBoard(board),
+      currentPlayer,
+      gameOver,
+      moveHistory: [...moveHistory],
+      moveRecords: moveRecords.map(m => ({
+        fromR: m.fromR,
+        fromC: m.fromC,
+        toR: m.toR,
+        toC: m.toC,
+        piece: m.piece ? { ...m.piece } : null,
+        captured: m.captured ? { ...m.captured } : null
+      })),
+      redTime,
+      blackTime,
+      gameMode,
+      difficulty,
+      aiEnabled,
+      studyScore
+    };
+    stateStack.push(state);
+  }
+
+  function undoMove() {
+    if (replayMode) return;
+    if (stateStack.length === 0) return;
+    const state = stateStack.pop();
+    board = state.board;
+    currentPlayer = state.currentPlayer;
+    gameOver = state.gameOver;
+    moveHistory = state.moveHistory;
+    moveRecords = state.moveRecords;
+    redTime = state.redTime;
+    blackTime = state.blackTime;
+    gameMode = state.gameMode || "normal";
+    difficulty = state.difficulty || difficulty;
+    aiEnabled = state.aiEnabled;
+    studyScore = state.studyScore || 0;
+
+    selected = null;
+    renderBoard();
+    updateStatus();
+    updateHistoryUI();
+    updateClocks();
+    updateDifficultyLabel();
+    updateStudyScoreUI();
+    applyModeUI();
+    saveGame();
+  }
+
+  function coordsDisplay(r, c) {
+    return `(${r},${c})`;
+  }
+
+  function addMoveToHistory(fromR, fromC, toR, toC, piece, captured) {
+    const sideName = piece.side === "r" ? "Đỏ" : "Đen";
+    let text = `${sideName}: ${pieceToChar(piece)} ${coordsDisplay(
+      fromR,
+      fromC
+    )} → ${coordsDisplay(toR, toC)}`;
+    if (captured) {
+      text += ` ăn ${pieceToChar(captured)}`;
+    }
+    moveHistory.push(text);
+    updateHistoryUI();
+  }
+
+  function updateHistoryUI() {
+    const list = document.getElementById("historyList");
+    list.innerHTML = "";
+    moveHistory.forEach(m => {
+      const li = document.createElement("li");
+      li.textContent = m;
+      list.appendChild(li);
+    });
+  }
+
+  /* ========= ĐỒNG HỒ ========= */
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return (
+      m.toString().padStart(2, "0") + ":" + s.toString().padStart(2, "0")
+    );
+  }
+
+  function updateClocks() {
+    document.getElementById("redClock").textContent = formatTime(redTime);
+    document.getElementById("blackClock").textContent = formatTime(blackTime);
+  }
+
+  function startClock() {
+    if (clockInterval) clearInterval(clockInterval);
+    if (gameMode === "study") return; // bỏ đồng hồ trong chế độ học
+    clockInterval = setInterval(() => {
+      if (gameOver || replayMode) return;
+      if (currentPlayer === "r") {
+        redTime--;
+        if (redTime <= 0) {
+          redTime = 0;
+          updateClocks();
+          gameOver = true;
+          document.getElementById("status").textContent =
+            "Hết giờ! ĐEN thắng.";
+          alert("Hết giờ! ĐEN thắng.");
+          saveGame();
+          return;
+        }
+      } else {
+        blackTime--;
+        if (blackTime <= 0) {
+          blackTime = 0;
+          updateClocks();
+          gameOver = true;
+          document.getElementById("status").textContent =
+            "Hết giờ! ĐỎ thắng.";
+          alert("Hết giờ! ĐỎ thắng.");
+          saveGame();
+          return;
+        }
+      }
+      updateClocks();
+      saveGame();
+    }, 1000);
+  }
+
+  function resetClocks() {
+    redTime = INITIAL_TIME;
+    blackTime = INITIAL_TIME;
+    updateClocks();
+  }
+
+  /* ========= LƯU / TẢI ========= */
+
+  function saveGame() {
+    if (replayMode) return;
+    try {
+      const data = {
+        board,
+        currentPlayer,
+        gameOver,
+        moveHistory,
+        moveRecords,
+        redTime,
+        blackTime,
+        aiEnabled,
+        difficulty: difficulty || "easy",
+        gameMode,
+        studyScore
+      };
+      localStorage.setItem("coTuongGame", JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  function loadGame() {
+    try {
+      const raw = localStorage.getItem("coTuongGame");
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.board)) return false;
+
+      board = data.board.map(row =>
+        row.map(cell => (cell ? { ...cell } : null))
+      );
+      currentPlayer = data.currentPlayer || "r";
+      gameOver = !!data.gameOver;
+      moveHistory = Array.isArray(data.moveHistory) ? data.moveHistory : [];
+      moveRecords = Array.isArray(data.moveRecords)
+        ? data.moveRecords.map(m => ({
+          fromR: m.fromR,
+          fromC: m.fromC,
+          toR: m.toR,
+          toC: m.toC,
+          piece: m.piece ? { ...m.piece } : null,
+          captured: m.captured ? { ...m.captured } : null,
+        }))
+        : [];
+      redTime = typeof data.redTime === "number" ? data.redTime : INITIAL_TIME;
+      blackTime = typeof data.blackTime === "number" ? data.blackTime : INITIAL_TIME;
+      aiEnabled = !!data.aiEnabled;
+      difficulty = data.difficulty || "easy";
+      gameMode = data.gameMode || "normal";
+      studyScore = data.studyScore || 0;
+
+      if (gameMode === "study") {
+        aiEnabled = true;
+      }
+
+      document.getElementById("aiToggle").checked = aiEnabled;
+
+      renderBoard();
+      updateStatus();
+      updateHistoryUI();
+      updateClocks();
+      updateDifficultyLabel();
+      updateStudyScoreUI();
+      applyModeUI();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* ========= NƯỚC ĐI ========= */
+
+  function tryMove(fromR, fromC, toR, toC) {
+    const piece = board[fromR][fromC];
+    if (!piece || piece.side !== currentPlayer) return false;
+
+    if (!isLegalMove(fromR, fromC, toR, toC, board, currentPlayer)) {
+      return false;
+    }
+
+    const target = board[toR][toC];
+
+    pushState();
+
+    moveRecords.push({
+      fromR,
+      fromC,
+      toR,
+      toC,
+      piece: { side: piece.side, type: piece.type },
+      captured: target ? { side: target.side, type: target.type } : null,
+    });
+
+    board[toR][toC] = piece;
+    board[fromR][fromC] = null;
+
+    addMoveToHistory(fromR, fromC, toR, toC, piece, target);
+
+    // Học tập: đánh giá nước đi của ĐỎ
+    if (gameMode === "study" && piece.side === "r") {
+      if (
+        lastHintMove &&
+        lastHintMove.fromR === fromR &&
+        lastHintMove.fromC === fromC &&
+        lastHintMove.toR === toR &&
+        lastHintMove.toC === toC
+      ) {
+        studyScore++;
+        updateStudyScoreUI();
+        setStudyMessage("Tuyệt! Bạn đi đúng nước gợi ý. +1⭐");
+      } else {
+        setStudyMessage(
+          "Bạn chọn nước khác với gợi ý. Hãy quan sát phản ứng của ĐEN và rút kinh nghiệm."
+        );
+      }
+      lastHintMove = null;
+      clearHints();
+    }
+
+    if (target && target.type === "k") {
+      renderBoard();
+      gameOver = true;
+      const statusDiv = document.getElementById("status");
+      const winner = currentPlayer === "r" ? "ĐỎ" : "ĐEN";
+      statusDiv.textContent = "Hết cờ! " + winner + " thắng.";
+      alert("Hết cờ! " + winner + " thắng.");
+      saveGame();
+      return true;
+    }
+
+    currentPlayer = currentPlayer === "r" ? "b" : "r";
+
+    evaluateGameEnd();
+    saveGame();
+    return true;
+  }
+
+  function evaluateGameEnd() {
+    if (gameOver) return;
+
+    const side = currentPlayer;
+    const inCheckNow = isInCheck(side, board);
+    const anyMove = hasAnyLegalMove(side);
+
+    if (!anyMove) {
+      gameOver = true;
+      const statusDiv = document.getElementById("status");
+      if (inCheckNow) {
+        const winner = side === "r" ? "ĐEN" : "ĐỎ";
+        statusDiv.textContent = "Chiếu hết! " + winner + " thắng.";
+        alert("Chiếu hết! " + winner + " thắng.");
+      } else {
+        statusDiv.textContent = "Hòa cờ (bí nước).";
+        alert("Hòa cờ (bí nước).");
+      }
+    }
+  }
+
+  /* ========= AI – ĐEN ========= */
+
+  function pieceValue(type) {
+    switch (type) {
+      case "k": return 1000;
+      case "r": return 9;
+      case "c": return 5;
+      case "n": return 4;
+      case "e": return 3;
+      case "a": return 2;
+      case "p": return 1;
+      default: return 1;
+    }
+  }
+
+  function getAllLegalMovesForSide(side) {
+    const moves = [];
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = board[r][c];
+        if (p && p.side === side) {
+          for (let tr = 0; tr < 10; tr++) {
+            for (let tc = 0; tc < 9; tc++) {
+              if (isLegalMove(r, c, tr, tc, board, side)) {
+                const captured = board[tr][tc];
+                let score = Math.random() * 0.1;
+                if (captured) {
+                  score += pieceValue(captured.type);
+                }
+                moves.push({
+                  fromR: r,
+                  fromC: c,
+                  toR: tr,
+                  toC: tc,
+                  score,
+                  piece: { side: p.side, type: p.type },
+                  captured: captured
+                    ? { side: captured.side, type: captured.type }
+                    : null,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  function getAllLegalMovesForSideOnBoard(boardRef, side) {
+    const moves = [];
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = boardRef[r][c];
+        if (p && p.side === side) {
+          for (let tr = 0; tr < 10; tr++) {
+            for (let tc = 0; tc < 9; tc++) {
+              if (isLegalMove(r, c, tr, tc, boardRef, side)) {
+                moves.push({
+                  fromR: r,
+                  fromC: c,
+                  toR: tr,
+                  toC: tc,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  function applyMoveOnBoard(boardRef, move) {
+    const piece = boardRef[move.fromR][move.fromC];
+    boardRef[move.toR][move.toC] = piece;
+    boardRef[move.fromR][move.fromC] = null;
+  }
+
+  function squareAttackedBySide(boardRef, r, c, attackerSide) {
+    for (let rr = 0; rr < 10; rr++) {
+      for (let cc = 0; cc < 9; cc++) {
+        const p = boardRef[rr][cc];
+        if (p && p.side === attackerSide) {
+          if (isBasicLegalMoveWithoutSelfCheck(rr, cc, r, c, boardRef, attackerSide)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function evaluateBoard(boardRef) {
+    let score = 0;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = boardRef[r][c];
+        if (p) {
+          const val = pieceValue(p.type);
+          score += p.side === "b" ? val : -val;
+        }
+      }
+    }
+    return score;
+  }
+
+  function minimax(boardRef, depth, isBlackTurn) {
+    if (depth === 0) {
+      return evaluateBoard(boardRef);
+    }
+    const side = isBlackTurn ? "b" : "r";
+    const moves = getAllLegalMovesForSideOnBoard(boardRef, side);
+    if (moves.length === 0) {
+      return evaluateBoard(boardRef);
+    }
+
+    if (isBlackTurn) {
+      let best = -Infinity;
+      for (const move of moves) {
+        const temp = cloneBoard(boardRef);
+        applyMoveOnBoard(temp, move);
+        const val = minimax(temp, depth - 1, false);
+        if (val > best) best = val;
+      }
+      return best;
+    } else {
+      let best = Infinity;
+      for (const move of moves) {
+        const temp = cloneBoard(boardRef);
+        applyMoveOnBoard(temp, move);
+        const val = minimax(temp, depth - 1, true);
+        if (val < best) best = val;
+      }
+      return best;
+    }
+  }
+
+  function getBestMoveEasy() {
+    const moves = getAllLegalMovesForSide("b");
+    if (!moves.length) return null;
+    let best = moves[0];
+    for (const m of moves) {
+      if (m.score > best.score) best = m;
+    }
+    return best;
+  }
+
+  function getBestMoveMedium() {
+    const moves = getAllLegalMovesForSide("b");
+    if (!moves.length) return null;
+    let bestMove = moves[0];
+    let bestScore = -Infinity;
+
+    for (const m of moves) {
+      let score = 0;
+
+      if (m.captured) {
+        score += pieceValue(m.captured.type) * 2;
+      }
+
+      score += (4 - Math.abs(4 - m.toC)) * 0.1;
+
+      const temp = cloneBoard(board);
+      applyMoveOnBoard(temp, m);
+
+      if (squareAttackedBySide(temp, m.toR, m.toC, "r")) {
+        score -= pieceValue(m.piece.type) * 3;
+      }
+
+      score += Math.random() * 0.05;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = m;
+      }
+    }
+    return bestMove;
+  }
+
+  function getBestMoveHard() {
+    const moves = getAllLegalMovesForSideOnBoard(board, "b");
+    if (!moves.length) return null;
+
+    let bestMove = moves[0];
+    let bestVal = -Infinity;
+
+    for (const m of moves) {
+      const temp = cloneBoard(board);
+      applyMoveOnBoard(temp, m);
+      const val = minimax(temp, 1, false);
+      if (val > bestVal) {
+        bestVal = val;
+        bestMove = m;
+      }
+    }
+
+    return bestMove;
+  }
+
+  // ⭐ GỢI Ý CHO ĐỎ TRONG CHẾ ĐỘ HỌC TẬP – HẠN CHẾ TƯỚNG ĐI LINH TINH
+  function getBestHintMoveForRed() {
+    const side = "r";
+    const moves = [];
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        const p = board[r][c];
+        if (p && p.side === side) {
+          for (let tr = 0; tr < 10; tr++) {
+            for (let tc = 0; tc < 9; tc++) {
+              if (isLegalMove(r, c, tr, tc, board, side)) {
+                const captured = board[tr][tc];
+                moves.push({
+                  fromR: r,
+                  fromC: c,
+                  toR: tr,
+                  toC: tc,
+                  piece: { side: p.side, type: p.type },
+                  captured: captured
+                    ? { side: captured.side, type: captured.type }
+                    : null,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    if (!moves.length) return null;
+
+    // ĐỎ đang bị chiếu hay không?
+    const redInCheck = isInCheck("r", board);
+
+    let bestMove = moves[0];
+    let bestScore = -Infinity;
+
+    for (const m of moves) {
+      let score = 0;
+
+      // 1. Ăn quân: khuyến khích mạnh
+      if (m.captured) {
+        score += pieceValue(m.captured.type) * 3;
+      }
+
+      // 2. Kiểm soát trung tâm (cột 4,5)
+      score += (4 - Math.abs(4 - m.toC)) * 0.2;
+
+      // 3. Tránh bị ăn lại ngay
+      const temp = cloneBoard(board);
+      applyMoveOnBoard(temp, m);
+      if (squareAttackedBySide(temp, m.toR, m.toC, "b")) {
+        score -= pieceValue(m.piece.type) * 3;
+      }
+
+      // 4. Xử lý riêng cho tướng
+      if (m.piece.type === "k") {
+        if (redInCheck) {
+          // Nếu đang bị chiếu, đi tướng để THOÁT chiếu thì cộng điểm lớn
+          if (!isInCheck("r", temp)) {
+            score += 30;
+          } else {
+            score -= 100; // tướng đi mà vẫn còn bị chiếu => rất tệ
+          }
+        } else {
+          // Không bị chiếu mà vẫn dắt tướng đi dạo => phạt nặng
+          score -= 20;
+        }
+      } else {
+        // 5. Khuyến khích phát triển quân khác ngoài tướng
+        score += 0.5;
+      }
+
+      // 6. Một chút ngẫu nhiên cho đa dạng
+      score += Math.random() * 0.05;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = m;
+      }
+    }
+
+    return bestMove;
+  }
+
+  function computerMove() {
+    if (!aiEnabled || gameOver || currentPlayer !== "b" || replayMode) return;
+
+    const level = difficulty || "easy";
+    let move = null;
+
+    if (level === "easy") {
+      move = getBestMoveEasy();
+    } else if (level === "medium") {
+      move = getBestMoveMedium();
+    } else {
+      move = getBestMoveHard();
+    }
+
+    if (!move) {
+      evaluateGameEnd();
+      return;
+    }
+
+    const moved = tryMove(move.fromR, move.fromC, move.toR, move.toC);
+    if (moved) {
+      renderBoard();
+      updateStatus();
+
+      if (gameMode === "study") {
+        const last = moveRecords[moveRecords.length - 1];
+        if (last && last.piece.side === "b") {
+          const capturedNote = last.captured
+            ? " và ăn " + pieceToChar(last.captured)
+            : "";
+          setStudyMessage(
+            "Máy (ĐEN) đi " +
+              pieceToChar(last.piece) +
+              " " +
+              coordsDisplay(last.fromR, last.fromC) +
+              " → " +
+              coordsDisplay(last.toR, last.toC) +
+              capturedNote +
+              "."
+          );
+        }
+      }
+    }
+  }
+
+  /* ========= REPLAY ========= */
+
+  function applyMoveToBoard(boardRef, move) {
+    const { fromR, fromC, toR, toC, piece } = move;
+    boardRef[toR][toC] = { side: piece.side, type: piece.type };
+    boardRef[fromR][fromC] = null;
+  }
+
+  function updateReplayBoard() {
+    board = createInitialBoard();
+    for (let i = 0; i < replayIndex; i++) {
+      applyMoveToBoard(board, moveRecords[i]);
+    }
+    renderBoard();
+  }
+
+  function updateReplayUI() {
+    const info = document.getElementById("replayInfo");
+    const statusDiv = document.getElementById("status");
+    const total = moveRecords.length;
+
+    if (!replayMode) {
+      info.textContent = "Đang ở trạng thái hiện tại.";
+      updateStatus();
+      return;
+    }
+
+    if (total === 0) {
+      info.textContent = "Chưa có nước đi nào.";
+      statusDiv.textContent = "Replay: 0/0";
+      return;
+    }
+
+    if (replayIndex === 0) {
+      info.textContent = "Bắt đầu ván cờ (chưa áp dụng nước nào).";
+    } else {
+      const move = moveRecords[replayIndex - 1];
+      const sideName = move.piece.side === "r" ? "ĐỎ" : "ĐEN";
+      info.textContent =
+        `Sau nước ${replayIndex}/${total} của ${sideName}: ` +
+        `${pieceToChar(move.piece)} ${coordsDisplay(move.fromR, move.fromC)} → ${coordsDisplay(move.toR, move.toC)}`;
+    }
+
+    statusDiv.textContent = `Replay: nước ${replayIndex}/${total}`;
+  }
+
+  function enterReplayMode() {
+    if (moveRecords.length === 0) {
+      alert("Chưa có nước đi nào để replay.");
+      return;
+    }
+    if (replayMode) return;
+
+    savedStateForReplay = {
+      board: cloneBoard(board),
+      currentPlayer,
+      gameOver,
+      moveHistory: [...moveHistory],
+      moveRecords: moveRecords.map(m => ({
+        fromR: m.fromR,
+        fromC: m.fromC,
+        toR: m.toR,
+        toC: m.toC,
+        piece: m.piece ? { ...m.piece } : null,
+        captured: m.captured ? { ...m.captured } : null,
+      })),
+      stateStack: stateStack,
+      redTime,
+      blackTime,
+      gameMode,
+      difficulty,
+      aiEnabled,
+      studyScore,
+    };
+
+    replayMode = true;
+    replayIndex = 0;
+
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+
+    const btn = document.getElementById("replayToggleBtn");
+    btn.textContent = "Thoát Replay";
+
+    updateReplayBoard();
+    updateReplayUI();
+  }
+
+  function exitReplayMode() {
+    if (!replayMode) return;
+    replayMode = false;
+
+    if (autoReplayInterval) {
+      clearInterval(autoReplayInterval);
+      autoReplayInterval = null;
+    }
+
+    if (savedStateForReplay) {
+      board = cloneBoard(savedStateForReplay.board);
+      currentPlayer = savedStateForReplay.currentPlayer;
+      gameOver = savedStateForReplay.gameOver;
+      moveHistory = savedStateForReplay.moveHistory;
+      moveRecords = savedStateForReplay.moveRecords;
+      stateStack = savedStateForReplay.stateStack;
+      redTime = savedStateForReplay.redTime;
+      blackTime = savedStateForReplay.blackTime;
+      gameMode = savedStateForReplay.gameMode;
+      difficulty = savedStateForReplay.difficulty;
+      aiEnabled = savedStateForReplay.aiEnabled;
+      studyScore = savedStateForReplay.studyScore;
+    }
+
+    savedStateForReplay = null;
+
+    renderBoard();
+    updateHistoryUI();
+    updateClocks();
+    updateDifficultyLabel();
+    updateStudyScoreUI();
+    applyModeUI();
+    updateStatus();
+    startClock();
+
+    const info = document.getElementById("replayInfo");
+    info.textContent = "Đang ở trạng thái hiện tại.";
+    const btn = document.getElementById("replayToggleBtn");
+    btn.textContent = "Replay ván cờ";
+  }
+
+  function startAutoReplay() {
+    if (!replayMode) enterReplayMode();
+    if (autoReplayInterval) {
+      clearInterval(autoReplayInterval);
+      autoReplayInterval = null;
+    }
+    autoReplayInterval = setInterval(() => {
+      if (!replayMode) {
+        clearInterval(autoReplayInterval);
+        autoReplayInterval = null;
+        return;
+      }
+      if (replayIndex >= moveRecords.length) {
+        clearInterval(autoReplayInterval);
+        autoReplayInterval = null;
+        return;
+      }
+      replayIndex++;
+      updateReplayBoard();
+      updateReplayUI();
+    }, 800);
+  }
+
+  /* ========= VẼ SÔNG, CUNG, CHẤM ========= */
+
+  function drawDecorations(boardDiv) {
+    const river = document.createElement("div");
+    river.id = "river";
+    river.innerHTML = "<span>楚河</span><span>漢界</span>";
+    boardDiv.appendChild(river);
+
+    const diagonals = [
+      { r1: 0, c1: 3, r2: 2, c2: 5 },
+      { r1: 0, c1: 5, r2: 2, c2: 3 },
+      { r1: 7, c1: 3, r2: 9, c2: 5 },
+      { r1: 7, c1: 5, r2: 9, c2: 3 },
+    ];
+
+    diagonals.forEach(d => {
+      const line = document.createElement("div");
+      line.className = "palace-diagonal";
+
+      const x1 = d.c1 * CELL_SIZE + CELL_SIZE / 2;
+      const y1 = d.r1 * CELL_SIZE + CELL_SIZE / 2;
+      const x2 = d.c2 * CELL_SIZE + CELL_SIZE / 2;
+      const y2 = d.r2 * CELL_SIZE + CELL_SIZE / 2;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+      line.style.width = length + "px";
+      line.style.left = x1 - length / 2 + dx / 2 + "px";
+      line.style.top = y1 - 1 + dy / 2 + "px";
+      line.style.transformOrigin = "center center";
+      line.style.transform = "rotate(" + angle + "deg)";
+      boardDiv.appendChild(line);
+    });
+
+    const dotPositions = [];
+    [
+      [2, 1],
+      [2, 7],
+      [7, 1],
+      [7, 7],
+    ].forEach(([r, c]) => dotPositions.push({ r, c }));
+
+    [3, 6].forEach(row => {
+      [0, 2, 4, 6, 8].forEach(col => dotPositions.push({ r: row, c: col }));
+    });
+
+    dotPositions.forEach(pos => {
+      const { r, c } = pos;
+      const dot = document.createElement("div");
+      dot.className = "dot";
+      const x = c * CELL_SIZE + CELL_SIZE / 2;
+      const y = r * CELL_SIZE + CELL_SIZE / 2;
+      const radius = 4;
+      dot.style.left = x - radius + "px";
+      dot.style.top = y - radius + "px";
+      boardDiv.appendChild(dot);
+    });
+  }
+
+  /* ========= CHẾ ĐỘ & VÁN MỚI ========= */
+
+  function showDifficultyOverlay() {
+    document.getElementById("difficultyOverlay").style.display = "flex";
+  }
+
+  function hideDifficultyOverlay() {
+    document.getElementById("difficultyOverlay").style.display = "none";
+  }
+
+  function showModeOverlay() {
+    document.getElementById("modeOverlay").style.display = "flex";
+  }
+
+  function hideModeOverlay() {
+    document.getElementById("modeOverlay").style.display = "none";
+  }
+
+  function startNewGameWithDifficulty(level) {
+    difficulty = level;
+    updateDifficultyLabel();
+    hideDifficultyOverlay();
+
+    if (autoReplayInterval) {
+      clearInterval(autoReplayInterval);
+      autoReplayInterval = null;
+    }
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+
+    replayMode = false;
+    savedStateForReplay = null;
+    replayIndex = 0;
+    document.getElementById("replayInfo").textContent = "Đang ở trạng thái hiện tại.";
+    document.getElementById("replayToggleBtn").textContent = "Replay ván cờ";
+
+    gameMode = "ai";
+    aiEnabled = true;
+    document.getElementById("aiToggle").checked = true;
+
+    initBoard();
+    renderBoard();
+    resetClocks();
+    gameOver = false;
+    applyModeUI();
+    saveGame();
+    startClock();
+  }
+
+  function startNewGameNormal() {
+    if (autoReplayInterval) {
+      clearInterval(autoReplayInterval);
+      autoReplayInterval = null;
+    }
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+
+    replayMode = false;
+    savedStateForReplay = null;
+    replayIndex = 0;
+    document.getElementById("replayInfo").textContent = "Đang ở trạng thái hiện tại.";
+    document.getElementById("replayToggleBtn").textContent = "Replay ván cờ";
+
+    gameMode = "normal";
+    aiEnabled = false;
+    document.getElementById("aiToggle").checked = false;
+
+    initBoard();
+    renderBoard();
+    resetClocks();
+    gameOver = false;
+    applyModeUI();
+    saveGame();
+    startClock();
+  }
+
+  function startNewStudyGame() {
+    if (autoReplayInterval) {
+      clearInterval(autoReplayInterval);
+      autoReplayInterval = null;
+    }
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+
+    replayMode = false;
+    savedStateForReplay = null;
+    replayIndex = 0;
+    document.getElementById("replayInfo").textContent = "Đang ở trạng thái hiện tại.";
+    document.getElementById("replayToggleBtn").textContent = "Replay ván cờ";
+
+    gameMode = "study";
+    difficulty = "medium";
+    aiEnabled = true;
+    document.getElementById("aiToggle").checked = true;
+
+    studyScore = 0;
+    lastHintMove = null;
+    updateStudyScoreUI();
+    setStudyMessage(
+      "Chế độ học tập: Bấm “Gợi ý” khi đến lượt ĐỎ. Đi đúng nước gợi ý để nhận sao."
+    );
+
+    initBoard();
+    renderBoard();
+    resetClocks();
+    gameOver = false;
+    applyModeUI();
+    updateDifficultyLabel();
+    saveGame();
+    // Không startClock vì chế độ học tập bỏ đồng hồ
+  }
+
+  /* ========= GỢI Ý – CLEAR ========= */
+
+  function clearHints() {
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 9; c++) {
+        cellElements[r][c].classList.remove("hint-cell");
+      }
+    }
+  }
+
+  /* ========= NÚT ========= */
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (replayMode) exitReplayMode();
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+    showModeOverlay();
+  });
+
+  document.getElementById("undoBtn").addEventListener("click", () => {
+    undoMove();
+  });
+
+  document.getElementById("aiToggle").addEventListener("change", e => {
+    if (gameMode === "study") {
+      e.target.checked = true;
+      return;
+    }
+    aiEnabled = e.target.checked;
+    saveGame();
+  });
+
+  document.getElementById("replayToggleBtn").addEventListener("click", () => {
+    if (!replayMode) {
+      enterReplayMode();
+    } else {
+      exitReplayMode();
+    }
+  });
+
+  document.getElementById("replayStartBtn").addEventListener("click", () => {
+    if (!replayMode) enterReplayMode();
+    replayIndex = 0;
+    updateReplayBoard();
+    updateReplayUI();
+  });
+
+  document.getElementById("replayEndBtn").addEventListener("click", () => {
+    if (!replayMode) enterReplayMode();
+    replayIndex = moveRecords.length;
+    updateReplayBoard();
+    updateReplayUI();
+  });
+
+  document.getElementById("replayPrevBtn").addEventListener("click", () => {
+    if (!replayMode) enterReplayMode();
+    if (replayIndex > 0) {
+      replayIndex--;
+      updateReplayBoard();
+      updateReplayUI();
+    }
+  });
+
+  document.getElementById("replayNextBtn").addEventListener("click", () => {
+    if (!replayMode) enterReplayMode();
+    if (replayIndex < moveRecords.length) {
+      replayIndex++;
+      updateReplayBoard();
+      updateReplayUI();
+    }
+  });
+
+  document.getElementById("replayAutoBtn").addEventListener("click", () => {
+    startAutoReplay();
+  });
+
+  // Buttons chọn độ khó
+  document.querySelectorAll("#difficultyButtons button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const level = btn.dataset.level;
+      startNewGameWithDifficulty(level);
+    });
+  });
+
+  // Buttons chọn chế độ
+  document.querySelectorAll("#modeButtons button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.mode;
+      hideModeOverlay();
+      if (mode === "normal") {
+        startNewGameNormal();
+      } else if (mode === "ai") {
+        showDifficultyOverlay();
+      } else if (mode === "study") {
+        startNewStudyGame();
+      }
+    });
+  });
+
+  // Nút gợi ý trong chế độ học tập
+  document.getElementById("hintBtn").addEventListener("click", () => {
+    if (gameMode !== "study" || replayMode || gameOver) return;
+    if (currentPlayer !== "r") {
+      setStudyMessage("Hãy đợi đến lượt ĐỎ rồi hãy xin gợi ý.");
+      return;
+    }
+    const move = getBestHintMoveForRed();
+    clearHints();
+    if (!move) {
+      setStudyMessage("Không còn nước đi hợp lệ cho ĐỎ.");
+      lastHintMove = null;
+      return;
+    }
+    lastHintMove = move;
+    const cellFrom = cellElements[move.fromR][move.fromC];
+    const cellTo = cellElements[move.toR][move.toC];
+    cellFrom.classList.add("hint-cell");
+    cellTo.classList.add("hint-cell");
+
+    const capturedText = move.captured
+      ? " (ăn " + pieceToChar(move.captured) + ")"
+      : "";
+
+    let reason = "";
+    if (move.captured) {
+      reason = " Đây là nước ăn quân có lợi cho bạn.";
+    } else if (Math.abs(4 - move.toC) <= 1) {
+      reason = " Nước đi này giúp bạn kiểm soát khu vực trung tâm.";
+    }
+
+    setStudyMessage(
+      "Gợi ý: " +
+        pieceToChar(board[move.fromR][move.fromC]) +
+        " " +
+        coordsDisplay(move.fromR, move.fromC) +
+        " → " +
+        coordsDisplay(move.toR, move.toC) +
+        capturedText +
+        "." +
+        reason +
+        " Hãy thử đi đúng nước này để nhận sao."
+    );
+  });
+
+  /* ========= KHỞI ĐỘNG ========= */
+
+  initBoard();
+  buildBoardUI();
+  resetClocks();
+  const hasGame = loadGame();
+  updateClocks();
+
+  if (hasGame) {
+    updateStatus();
+    if (gameMode !== "study") {
+      startClock();
+    }
+  } else {
+    updateDifficultyLabel();
+    applyModeUI();
+    showModeOverlay();
+  }
+</script>
+</body>
+</html>
